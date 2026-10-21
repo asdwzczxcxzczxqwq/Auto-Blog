@@ -1,7 +1,3 @@
-export const config = {
-  maxDuration: 60,
-};
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -69,46 +65,49 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1단계: 현재 API 키로 사용 가능한 모델 목록을 구글 서버에서 직접 조회
-    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    const listData = await listRes.json();
-
-    if (!listRes.ok) {
-      return res.status(500).json({ error: 'API 키 확인 실패: ' + (listData.error?.message || '알 수 없는 오류') });
-    }
-
-    // generateContent를 지원하는 gemini 모델만 필터링 (구버전 2.5-flash 제외)
-    const availableModels = (listData.models || [])
-      .filter(m => 
-        m.name.includes('gemini') && 
-        !m.name.includes('2.5-flash') &&
-        !m.name.includes('2.0') &&
-        !m.name.includes('1.5') &&
-        !m.name.includes('embedding') &&
-        !m.name.includes('imagen') &&
-        m.supportedGenerationMethods?.includes('generateContent')
-      )
-      .map(m => m.name); // 예: "models/gemini-3-flash-preview"
-
-    // 우선순위: flash가 들어간 최신 모델 우선 선택, 없으면 첫 번째 가능 모델 선택
-    const targetModel = availableModels.find(n => n.includes('flash')) || availableModels[0] || 'models/gemini-2.5-pro';
-
-    // 2단계: 찾아낸 정확한 모델명으로 블로그 원고 생성 호출
+    // 구글이 지정한 gemini-3.8-flash 호출 + 생각 시간(thinkingBudget) 0으로 설정해 3초 내 초고속 응답
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-          contents: [{ role: 'user', parts }]
+          contents: [{ role: 'user', parts }],
+          generationConfig: {
+            thinkingConfig: {
+              thinkingBudget: 0
+            }
+          }
         })
       }
     );
 
     const data = await response.json();
+
+    // 만약 thinkingConfig 옵션이 호환되지 않는 경우 일반 호출로 즉시 재시도
+    if (!response.ok && data.error?.message?.includes('thinking')) {
+      const retryRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+            contents: [{ role: 'user', parts }]
+          })
+        }
+      );
+      const retryData = await retryRes.json();
+      if (!retryRes.ok) {
+        return res.status(500).json({ error: retryData.error?.message || '호출 실패' });
+      }
+      const retryText = retryData.candidates?.[0]?.content?.parts?.[0]?.text || '결과 없음';
+      return res.status(200).json({ result: retryText });
+    }
+
     if (!response.ok) {
-      return res.status(500).json({ error: `[${targetModel}] 호출 실패: ` + (data.error?.message || '오류') });
+      return res.status(500).json({ error: data.error?.message || 'Gemini API 호출 실패' });
     }
 
     const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || '결과를 생성하지 못했습니다.';
