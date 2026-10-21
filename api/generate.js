@@ -28,10 +28,10 @@ const NO_THINKING_CONFIG = new Set();
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function buildBody({ systemInstruction, parts, temperature, maxOutputTokens, responseSchema }, useThinking) {
+function buildBody({ systemInstruction, parts, contents, temperature, maxOutputTokens, responseSchema }, useThinking) {
   return {
     ...(systemInstruction && { system_instruction: { parts: [{ text: systemInstruction }] } }),
-    contents: [{ role: 'user', parts }],
+    contents: contents || [{ role: 'user', parts }],
     generationConfig: {
       temperature,
       maxOutputTokens,
@@ -45,8 +45,9 @@ function buildBody({ systemInstruction, parts, temperature, maxOutputTokens, res
 // Gemini 요청 열기: 응답이 "시작"될 때까지 재시도·예비 모델 처리
 // 성공하면 아직 본문을 읽지 않은 response를 돌려줌 (스트리밍/일반 공용)
 // ─────────────────────────────────────────────────────────────
-async function openGemini(apiKey, opts, { stream, deadline }) {
-  const models = [PRIMARY_MODEL, FALLBACK_MODEL].filter(Boolean);
+const ALL_MODELS = [...new Set([PRIMARY_MODEL, FALLBACK_MODEL].filter(Boolean))];
+
+async function openGemini(apiKey, opts, { stream, deadline, models = ALL_MODELS }) {
   let lastError = '알 수 없는 오류';
 
   for (const model of models) {
@@ -287,20 +288,18 @@ export default async function handler(req, res) {
 첨부된 파일과 위 정보를 바탕으로 전문 기술 블로그 포스팅 완성본을 작성해 주세요.
 `;
 
+  const baseOpts = {
+    systemInstruction: SYSTEM_INSTRUCTION,
+    temperature: 0.7,
+    // 사고(thinking) 토큰도 이 한도에 포함되므로 넉넉하게
+    maxOutputTokens: 8192,
+  };
+  const baseContents = [{ role: 'user', parts: [{ text: userPrompt }, ...fileParts] }];
+
   // 1) 응답이 시작될 때까지는 재시도 가능 → 실패하면 JSON 에러로 응답
-  let opened;
+  let current;
   try {
-    opened = await openGemini(
-      apiKey,
-      {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        parts: [{ text: userPrompt }, ...fileParts],
-        temperature: 0.7,
-        // 사고(thinking) 토큰도 이 한도에 포함되므로 넉넉하게
-        maxOutputTokens: 8192,
-      },
-      { stream: true, deadline }
-    );
+    current = await openGemini(apiKey, { ...baseOpts, contents: baseContents }, { stream: true, deadline });
   } catch (err) {
     console.error(JSON.stringify({ mode: 'generate', ms: Date.now() - startedAt, error: err.message }));
     return res.status(500).json({ error: err.message });
@@ -312,23 +311,63 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('X-Accel-Buffering', 'no');
 
-  const deadlineTimer = setTimeout(() => opened.controller.abort(), Math.max(1000, deadline - Date.now()));
+  const MAX_CONTINUATIONS = 2; // 도중에 끊겼을 때 이어쓰기 최대 횟수
+  const modelsUsed = [current.model];
+  const streamErrors = [];
   let total = '';
   let finishReason;
   let blockReason;
   let usage;
 
   try {
-    for await (const chunk of readSSE(opened.response, opened.controller)) {
-      if (chunk.error) throw new Error(chunk.error.message || 'AI 스트림 오류');
-      if (chunk.promptFeedback?.blockReason) blockReason = chunk.promptFeedback.blockReason;
-      if (chunk.usageMetadata) usage = chunk.usageMetadata;
-      const candidate = chunk.candidates?.[0];
-      if (candidate?.finishReason) finishReason = candidate.finishReason;
-      const text = textOf(candidate);
-      if (text) {
-        total += text;
-        res.write(text);
+    while (true) {
+      const deadlineTimer = setTimeout(() => current.controller.abort(), Math.max(1000, deadline - Date.now()));
+      try {
+        for await (const chunk of readSSE(current.response, current.controller)) {
+          if (chunk.error) throw new Error(chunk.error.message || 'AI 스트림 오류');
+          if (chunk.promptFeedback?.blockReason) blockReason = chunk.promptFeedback.blockReason;
+          if (chunk.usageMetadata) usage = chunk.usageMetadata;
+          const candidate = chunk.candidates?.[0];
+          if (candidate?.finishReason) finishReason = candidate.finishReason;
+          const text = textOf(candidate);
+          if (text) {
+            total += text;
+            res.write(text);
+          }
+        }
+        break; // 정상 완료
+      } catch (err) {
+        const reason = err.name === 'AbortError' ? '응답 지연' : err.message;
+        streamErrors.push(`[${current.model}] ${reason}`);
+
+        // 3) 도중에 끊기면(과부하 등) 다른 모델을 우선으로, 끊긴 지점부터 이어쓰기
+        if (streamErrors.length > MAX_CONTINUATIONS || deadline - Date.now() < 20_000) {
+          res.write(`\n\n⚠️ (생성 중 오류: ${reason}. 다시 생성해 주세요.)`);
+          break;
+        }
+        const order = [...ALL_MODELS.filter((m) => m !== current.model), current.model];
+        const contents = total
+          ? [
+              ...baseContents,
+              { role: 'model', parts: [{ text: total }] },
+              {
+                role: 'user',
+                parts: [{
+                  text: '위 원고가 작성 도중 끊겼습니다. 끊긴 지점의 바로 다음 글자부터 같은 형식과 문체로 끝까지 이어서 작성하세요. 이미 쓴 내용을 반복하거나 앞에 다른 말을 붙이지 마세요.',
+                }],
+              },
+            ]
+          : baseContents;
+        try {
+          current = await openGemini(apiKey, { ...baseOpts, contents }, { stream: true, deadline, models: order });
+          modelsUsed.push(current.model);
+          finishReason = undefined;
+        } catch (err2) {
+          res.write(`\n\n⚠️ (생성 중 오류: ${reason}. 이어쓰기도 실패했습니다: ${err2.message})`);
+          break;
+        }
+      } finally {
+        clearTimeout(deadlineTimer);
       }
     }
 
@@ -340,17 +379,16 @@ export default async function handler(req, res) {
       res.write('\n\n⚠️ (분량 제한으로 원고가 중간에 끊겼습니다. 다시 생성하거나 마지막 부분만 보완해 주세요.)');
     }
   } catch (err) {
-    const reason = err.name === 'AbortError' ? '응답이 너무 오래 걸려 여기서 중단되었습니다' : `생성 중 오류: ${err.message}`;
-    res.write(`\n\n⚠️ (${reason}. 다시 생성해 주세요.)`);
+    res.write(`\n\n⚠️ (생성 중 오류: ${err.message}. 다시 생성해 주세요.)`);
   } finally {
-    clearTimeout(deadlineTimer);
-    // Vercel 대시보드 → Logs에서 소요 시간과 사고 토큰 수를 확인할 수 있음
+    // Vercel 대시보드 → Logs에서 소요 시간·사용 모델·끊김 기록을 확인할 수 있음
     console.log(JSON.stringify({
       mode: 'generate',
-      model: opened.model,
+      models: modelsUsed,
       ms: Date.now() - startedAt,
       chars: total.length,
       finishReason,
+      streamErrors,
       usage,
     }));
     res.end();
