@@ -40,16 +40,16 @@ export default async function handler(req, res) {
     trouble: '제조 공정 트러블슈팅 및 엔지니어링 노하우'
   };
 
-  const userPrompt = `
+const userPrompt = `
 [글 카테고리]: ${categoryNames[category] || '기술 블로그'}
 [핵심 입력 1]: ${input1 || '없음'}
 [핵심 입력 2]: ${input2 || '없음'}
 [핵심 입력 3]: ${input3 || '없음'}
 [현장 자료 / 추가 사양 텍스트]: ${rawData || '별도 텍스트 자료 없음'}
 
-위 정보를 바탕으로 전문 기술 블로그 포스팅 완성본을 작성해 주세요.
+첨부된 파일(이미지 또는 PDF/문서)과 위 정보를 바탕으로, 회사의 기술적 강점이 잘 드러나는 전문 블로그 포스팅 완성본을 작성해 주세요.
 `;
-
+  
   const parts = [{ text: userPrompt }];
   if (images && Array.isArray(images)) {
     images.forEach(img => {
