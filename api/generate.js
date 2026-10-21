@@ -8,15 +8,15 @@ export const config = {
 // ─────────────────────────────────────────────────────────────
 // 설정값 (모두 Vercel 환경변수로 덮어쓸 수 있음)
 // ─────────────────────────────────────────────────────────────
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-// 기본 모델이 계속 실패/지연될 때 넘어갈 예비 모델. 비워두면 사용 안 함 (예: gemini-3.5-flash-lite)
-const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || '';
-// gemini-3.8-flash는 사고(thinking)를 끌 수 없고 기본값이 medium.
-// 지원되는 가장 낮은 단계인 low로 고정 → 응답 시작까지의 대기 시간 단축
-const THINKING_LEVEL = process.env.GEMINI_THINKING_LEVEL || 'low';
+// gemini-3.8-flash는 사고(thinking)를 끌 수 없고 최저 단계도 low라서 첫 글자까지 60초 넘게 걸리는 일이 생김.
+// → 사고를 minimal까지 낮출 수 있는 3.6-flash를 기본으로, 막히면 더 가벼운 3.5-flash-lite로 자동 전환.
+// (Vercel 환경변수 GEMINI_MODEL / GEMINI_FALLBACK_MODEL / GEMINI_THINKING_LEVEL로 언제든 변경 가능)
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
+const THINKING_LEVEL = process.env.GEMINI_THINKING_LEVEL || 'minimal';
 
 const TOTAL_BUDGET_MS = 170_000;     // maxDuration(180초)보다 10초 여유
-const FIRST_BYTE_TIMEOUT_MS = 60_000; // 구글이 응답을 시작조차 안 할 때의 한도
+const FIRST_BYTE_TIMEOUT_MS = 40_000; // 첫 응답이 40초 안에 없으면 예비 모델로 넘어감
 const IDLE_TIMEOUT_MS = 60_000;       // 스트리밍 도중 글자가 60초간 안 들어오면 중단
 const MAX_ATTEMPTS_PER_MODEL = 3;
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
