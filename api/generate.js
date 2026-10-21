@@ -1,146 +1,154 @@
 // api/generate.js
 export const config = {
-  maxDuration: 60, // Vercel 함수 최대 실행 시간(초). 아래 내부 예산은 반드시 이보다 짧게.
+  // Fluid compute가 켜진 프로젝트는 Hobby 플랜도 최대 300초까지 허용됨.
+  // 배포가 실패하면 Vercel 프로젝트 Settings → Functions에서 Fluid Compute가 켜져 있는지 확인.
+  maxDuration: 180,
 };
 
 // ─────────────────────────────────────────────────────────────
-// 설정값
+// 설정값 (모두 Vercel 환경변수로 덮어쓸 수 있음)
 // ─────────────────────────────────────────────────────────────
-// 모델명은 코드 수정 없이 Vercel 환경변수로 교체 가능하게 분리
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-// 503(과부하)·429가 계속될 때 넘어갈 예비 모델. 비워두면 사용 안 함 (예: 더 가벼운 flash-lite 계열)
+// 기본 모델이 계속 실패/지연될 때 넘어갈 예비 모델. 비워두면 사용 안 함 (예: gemini-3.5-flash-lite)
 const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || '';
+// gemini-3.8-flash는 사고(thinking)를 끌 수 없고 기본값이 medium.
+// 지원되는 가장 낮은 단계인 low로 고정 → 응답 시작까지의 대기 시간 단축
+const THINKING_LEVEL = process.env.GEMINI_THINKING_LEVEL || 'low';
 
-// maxDuration(60초)보다 5초 여유 → Vercel이 함수를 강제 종료(HTML 504)하기 전에
-// 우리가 먼저 JSON 에러를 돌려줘서 화면에 정확한 원인이 뜨게 함
-const TOTAL_BUDGET_MS = 55_000;
+const TOTAL_BUDGET_MS = 170_000;     // maxDuration(180초)보다 10초 여유
+const FIRST_BYTE_TIMEOUT_MS = 60_000; // 구글이 응답을 시작조차 안 할 때의 한도
+const IDLE_TIMEOUT_MS = 60_000;       // 스트리밍 도중 글자가 60초간 안 들어오면 중단
 const MAX_ATTEMPTS_PER_MODEL = 3;
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const MAX_FILES = 5;
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // thinkingConfig를 거부한 모델을 기억 → 같은 서버 인스턴스에서는 매번 헛호출하지 않음
 const NO_THINKING_CONFIG = new Set();
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ─────────────────────────────────────────────────────────────
-// 시도마다 "자기만의" 타이머를 갖는 fetch (기존 코드는 1·2차 시도가 타이머 하나를 공유했음)
-// ─────────────────────────────────────────────────────────────
-async function fetchJsonWithTimeout(url, options, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    const raw = await response.text();
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      data = { error: { message: raw.slice(0, 300) || '빈 응답' } };
-    }
-    return { ok: response.ok, status: response.status, data };
-  } finally {
-    clearTimeout(timer);
-  }
+function buildBody({ systemInstruction, parts, temperature, maxOutputTokens, responseSchema }, useThinking) {
+  return {
+    ...(systemInstruction && { system_instruction: { parts: [{ text: systemInstruction }] } }),
+    contents: [{ role: 'user', parts }],
+    generationConfig: {
+      temperature,
+      maxOutputTokens,
+      ...(responseSchema && { responseMimeType: 'application/json', responseSchema }),
+      ...(useThinking && { thinkingConfig: { thinkingLevel: THINKING_LEVEL } }),
+    },
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
-// Gemini 호출: 시간 예산 관리 + 429/503 재시도 + 예비 모델 + thinkingConfig 호환 처리
+// Gemini 요청 열기: 응답이 "시작"될 때까지 재시도·예비 모델 처리
+// 성공하면 아직 본문을 읽지 않은 response를 돌려줌 (스트리밍/일반 공용)
 // ─────────────────────────────────────────────────────────────
-async function callGemini(apiKey, { systemInstruction, parts, temperature, maxOutputTokens, responseSchema }) {
-  const deadline = Date.now() + TOTAL_BUDGET_MS;
+async function openGemini(apiKey, opts, { stream, deadline }) {
   const models = [PRIMARY_MODEL, FALLBACK_MODEL].filter(Boolean);
   let lastError = '알 수 없는 오류';
 
   for (const model of models) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const url = `${API_BASE}/${model}:${stream ? 'streamGenerateContent?alt=sse' : 'generateContent'}`;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_MODEL; attempt++) {
       const remaining = deadline - Date.now();
-      if (remaining < 5000) {
-        throw new Error('AI 응답 대기 시간이 초과되었습니다. 첨부 파일 수를 줄이거나 잠시 후 다시 시도해 주세요.');
+      if (remaining < 10_000) {
+        throw new Error(`AI 응답 대기 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요. (${lastError})`);
       }
 
-      const sendThinkingConfig = !NO_THINKING_CONFIG.has(model);
-      const generationConfig = {
-        temperature,
-        maxOutputTokens,
-        ...(responseSchema && { responseMimeType: 'application/json', responseSchema }),
-        ...(sendThinkingConfig && { thinkingConfig: { thinkingBudget: 0 } }),
-      };
+      const useThinking = !NO_THINKING_CONFIG.has(model);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Math.min(FIRST_BYTE_TIMEOUT_MS, remaining - 5000));
 
-      const body = {
-        ...(systemInstruction && { system_instruction: { parts: [{ text: systemInstruction }] } }),
-        contents: [{ role: 'user', parts }],
-        generationConfig,
-      };
-
-      let result;
+      let response;
       try {
-        result = await fetchJsonWithTimeout(
-          url,
-          {
-            method: 'POST',
-            // API 키를 URL(?key=)이 아닌 헤더로 전송 → 각종 로그에 키가 남지 않음
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify(body),
-          },
-          remaining - 1000
-        );
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify(buildBody(opts, useThinking)),
+          signal: controller.signal,
+        });
       } catch (err) {
+        clearTimeout(timer);
         if (err.name === 'AbortError') {
-          throw new Error('AI 응답이 제한 시간(약 55초) 안에 끝나지 않았습니다. 첨부 파일을 줄이거나 다시 시도해 주세요.');
+          lastError = `[${model}] 응답 시작 지연`;
+          break; // 같은 모델로 다시 기다리지 않고 예비 모델로
         }
-        // 네트워크 순간 끊김 등 → 잠깐 쉬고 재시도
-        lastError = err.message;
+        lastError = err.message; // 네트워크 순간 끊김 → 재시도
         if (attempt < MAX_ATTEMPTS_PER_MODEL) await sleep(800 * attempt);
         continue;
       }
+      clearTimeout(timer);
 
-      const { ok, status, data } = result;
-      if (ok) return data;
+      if (response.ok) return { response, controller, model };
 
-      const message = data?.error?.message || `HTTP ${status}`;
+      const raw = await response.text().catch(() => '');
+      let message;
+      try { message = JSON.parse(raw)?.error?.message; } catch { /* HTML 등 */ }
+      message = message || raw.slice(0, 300) || `HTTP ${response.status}`;
       lastError = `[${model}] ${message}`;
 
-      // thinkingConfig 미지원 모델 → 옵션 빼고 즉시 재시도 (재시도 횟수 차감 없음, 한 번만 발생)
-      if (sendThinkingConfig && status === 400 && /thinking/i.test(message)) {
+      // thinkingLevel을 모르는 모델(예: 2.5 계열로 바꾼 경우) → 옵션 빼고 즉시 재시도
+      if (useThinking && response.status === 400 && /thinking/i.test(message)) {
         NO_THINKING_CONFIG.add(model);
         attempt--;
         continue;
       }
 
-      // 400/401/403/404 등은 다시 보내도 결과가 같으므로 바로 종료
-      if (!RETRYABLE_STATUS.has(status)) {
-        throw new Error(lastError);
-      }
+      if (!RETRYABLE_STATUS.has(response.status)) throw new Error(lastError);
 
-      // 429(요청 한도)·503(과부하): 1초 → 2초 (+랜덤) 간격으로 재시도
       if (attempt < MAX_ATTEMPTS_PER_MODEL) {
         await sleep(1000 * 2 ** (attempt - 1) + Math.random() * 500);
       }
     }
-    // 이 모델로 다 실패 → 예비 모델로 넘어감
   }
 
-  throw new Error(`AI 서버가 일시적으로 혼잡합니다. 1~2분 후 다시 시도해 주세요. (${lastError})`);
+  throw new Error(`AI 서버 응답에 실패했습니다. 1~2분 후 다시 시도해 주세요. (${lastError})`);
 }
 
-// 응답에서 텍스트 추출: parts[0]만 보지 않고 모든 텍스트 파트를 합침 + 중단 사유 확인
-function extractText(data) {
-  const candidate = data?.candidates?.[0];
-  const text = (candidate?.content?.parts || [])
+// SSE(서버 전송 이벤트) 응답을 조각 단위로 읽기
+async function* readSSE(response, controller) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let idle;
+  const arm = () => {
+    clearTimeout(idle);
+    idle = setTimeout(() => controller.abort(), IDLE_TIMEOUT_MS);
+  };
+  arm();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      arm();
+      buffer += decoder.decode(value, { stream: true });
+      let m;
+      while ((m = buffer.match(/\r?\n\r?\n/))) {
+        const event = buffer.slice(0, m.index);
+        buffer = buffer.slice(m.index + m[0].length);
+        const data = event
+          .split(/\r?\n/)
+          .filter((l) => l.startsWith('data:'))
+          .map((l) => l.slice(5).trim())
+          .join('');
+        if (data) yield JSON.parse(data);
+      }
+    }
+  } finally {
+    clearTimeout(idle);
+  }
+}
+
+function textOf(candidate) {
+  return (candidate?.content?.parts || [])
     .filter((p) => typeof p.text === 'string' && !p.thought)
     .map((p) => p.text)
     .join('');
-  return {
-    text,
-    finishReason: candidate?.finishReason,
-    blockReason: data?.promptFeedback?.blockReason,
-  };
 }
 
-// 첨부 파일 검증 (개수·형식)
 function buildFileParts(images) {
   if (!Array.isArray(images)) return [];
   return images
@@ -168,12 +176,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Vercel 환경변수에 GEMINI_API_KEY가 설정되지 않았습니다.' });
   }
 
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
+  const startedAt = Date.now();
   const { mode, category, input1, input2, input3, rawData, images } = req.body || {};
   const fileParts = buildFileParts(images);
   const categoryLabel = categoryNames[category] || categoryNames.case;
 
   // ==========================================================
-  // 모드 1: [🪄 AI 자동 추천 / 빈칸 채우기]
+  // 모드 1: [🪄 AI 자동 추천 / 빈칸 채우기]  (짧은 응답 → 일반 호출)
   // ==========================================================
   if (mode === 'recommend') {
     const recommendPrompt = `
@@ -191,7 +201,6 @@ export default async function handler(req, res) {
 각 칸은 한 줄(40자 내외)로 작성하세요.
 `;
 
-    // 정규식으로 JSON을 긁어내는 대신, 모델에게 JSON 형식을 강제
     const responseSchema = {
       type: 'OBJECT',
       properties: {
@@ -203,19 +212,26 @@ export default async function handler(req, res) {
     };
 
     try {
-      const data = await callGemini(apiKey, {
-        systemInstruction: null,
-        parts: [{ text: recommendPrompt }, ...fileParts],
-        temperature: 0.9,
-        maxOutputTokens: 1024,
-        responseSchema,
-      });
+      const { response, controller, model } = await openGemini(
+        apiKey,
+        { parts: [{ text: recommendPrompt }, ...fileParts], temperature: 0.9, maxOutputTokens: 4096, responseSchema },
+        { stream: false, deadline }
+      );
 
-      const { text, blockReason } = extractText(data);
-      if (blockReason) {
-        return res.status(422).json({ error: `입력 자료가 AI 안전 필터에 걸렸습니다 (${blockReason}).` });
+      const timer = setTimeout(() => controller.abort(), Math.max(1000, deadline - Date.now()));
+      let data;
+      try {
+        data = JSON.parse(await response.text());
+      } finally {
+        clearTimeout(timer);
+      }
+      console.log(JSON.stringify({ mode: 'recommend', model, ms: Date.now() - startedAt, usage: data?.usageMetadata }));
+
+      if (data?.promptFeedback?.blockReason) {
+        return res.status(422).json({ error: `입력 자료가 AI 안전 필터에 걸렸습니다 (${data.promptFeedback.blockReason}).` });
       }
 
+      const text = textOf(data?.candidates?.[0]);
       let parsed = {};
       try {
         parsed = JSON.parse(text);
@@ -228,12 +244,13 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ recommendation: parsed });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      const message = err.name === 'AbortError' ? 'AI 응답이 너무 오래 걸려 중단되었습니다. 다시 눌러주세요.' : err.message;
+      return res.status(500).json({ error: message });
     }
   }
 
   // ==========================================================
-  // 모드 2: [✨ 블로그 원고 자동 생성하기]
+  // 모드 2: [✨ 블로그 원고 자동 생성하기]  (스트리밍: 글이 써지는 대로 화면에 전달)
   // ==========================================================
   const SYSTEM_INSTRUCTION = `
 당신은 산업 자동화 설비 및 제조 솔루션 전문 기업의 수석 기술 마케터입니다.
@@ -245,7 +262,7 @@ export default async function handler(req, res) {
 1. 보안 마스킹: 입력된 자료에 특정 고객사 실명이나 단가/견적 금액이 있으면 '국내 주요 반도체 부품 제조사', 'A사' 등으로 익명화하고 금액은 제외하세요.
 2. 전문성과 가독성: 기술적 인과관계(원인-해결-결과)를 명확히 서술하되, 네이버 블로그에 바로 붙여넣기 좋게 마크다운 별표(**) 대신 깔끔한 기호(■, ▶, ✔)와 줄바꿈을 활용하세요.
 3. 사진 가이드: 문맥에 맞춰 사진이 들어갈 위치에 [📸 사진 삽입: ~한 장면] 형태로 가이드를 넣어주세요.
-4. 분량: 본문은 공백 포함 2,500~3,500자 내외로 작성하세요. (너무 길면 응답이 끊길 수 있음)
+4. 분량: 본문은 공백 포함 2,500~3,500자 내외로 작성하세요.
 
 [출력 포맷]
 📌 추천 블로그 제목 (3가지)
@@ -269,29 +286,71 @@ export default async function handler(req, res) {
 첨부된 파일과 위 정보를 바탕으로 전문 기술 블로그 포스팅 완성본을 작성해 주세요.
 `;
 
+  // 1) 응답이 시작될 때까지는 재시도 가능 → 실패하면 JSON 에러로 응답
+  let opened;
   try {
-    const data = await callGemini(apiKey, {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      parts: [{ text: userPrompt }, ...fileParts],
-      temperature: 0.7,
-      // 출력 상한 → 생성 시간이 무한정 늘어나지 않게 함 (thinking이 켜지는 모델이면 사고 토큰도 여기 포함됨)
-      maxOutputTokens: 6144,
-    });
-
-    const { text, finishReason, blockReason } = extractText(data);
-
-    if (blockReason) {
-      return res.status(422).json({ error: `입력 자료가 AI 안전 필터에 걸렸습니다 (${blockReason}). 문구나 첨부 파일을 바꿔 다시 시도해 주세요.` });
-    }
-    if (!text) {
-      return res.status(502).json({ error: `AI가 원고를 생성하지 못했습니다 (중단 사유: ${finishReason || '알 수 없음'}). 다시 시도해 주세요.` });
-    }
-
-    const notice = finishReason === 'MAX_TOKENS'
-      ? '\n\n⚠️ (분량 제한으로 원고가 중간에 끊겼습니다. 다시 생성하거나 마지막 부분만 보완해 주세요.)'
-      : '';
-    return res.status(200).json({ result: text + notice });
+    opened = await openGemini(
+      apiKey,
+      {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        parts: [{ text: userPrompt }, ...fileParts],
+        temperature: 0.7,
+        // 사고(thinking) 토큰도 이 한도에 포함되므로 넉넉하게
+        maxOutputTokens: 8192,
+      },
+      { stream: true, deadline }
+    );
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+
+  // 2) 응답이 시작되면 글자를 받는 즉시 브라우저로 흘려보냄
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  const deadlineTimer = setTimeout(() => opened.controller.abort(), Math.max(1000, deadline - Date.now()));
+  let total = '';
+  let finishReason;
+  let blockReason;
+  let usage;
+
+  try {
+    for await (const chunk of readSSE(opened.response, opened.controller)) {
+      if (chunk.error) throw new Error(chunk.error.message || 'AI 스트림 오류');
+      if (chunk.promptFeedback?.blockReason) blockReason = chunk.promptFeedback.blockReason;
+      if (chunk.usageMetadata) usage = chunk.usageMetadata;
+      const candidate = chunk.candidates?.[0];
+      if (candidate?.finishReason) finishReason = candidate.finishReason;
+      const text = textOf(candidate);
+      if (text) {
+        total += text;
+        res.write(text);
+      }
+    }
+
+    if (blockReason) {
+      res.write(`\n\n⚠️ 입력 자료가 AI 안전 필터에 걸렸습니다 (${blockReason}). 문구나 첨부 파일을 바꿔 다시 시도해 주세요.`);
+    } else if (!total) {
+      res.write(`⚠️ AI가 원고를 생성하지 못했습니다 (중단 사유: ${finishReason || '알 수 없음'}). 다시 시도해 주세요.`);
+    } else if (finishReason === 'MAX_TOKENS') {
+      res.write('\n\n⚠️ (분량 제한으로 원고가 중간에 끊겼습니다. 다시 생성하거나 마지막 부분만 보완해 주세요.)');
+    }
+  } catch (err) {
+    const reason = err.name === 'AbortError' ? '응답이 너무 오래 걸려 여기서 중단되었습니다' : `생성 중 오류: ${err.message}`;
+    res.write(`\n\n⚠️ (${reason}. 다시 생성해 주세요.)`);
+  } finally {
+    clearTimeout(deadlineTimer);
+    // Vercel 대시보드 → Logs에서 소요 시간과 사고 토큰 수를 확인할 수 있음
+    console.log(JSON.stringify({
+      mode: 'generate',
+      model: opened.model,
+      ms: Date.now() - startedAt,
+      chars: total.length,
+      finishReason,
+      usage,
+    }));
+    res.end();
   }
 }
