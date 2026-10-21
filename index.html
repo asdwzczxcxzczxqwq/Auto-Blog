@@ -1,217 +1,4 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>B2B 기술 블로그 자동 생성기</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; }
-    .navy-header { background-color: #0f172a; }
-    .tab-active { background-color: #1e293b; color: #ffffff; border-color: #1e293b; }
-  </style>
-</head>
-<body class="text-slate-800">
-
-  <!-- 상단 헤더 -->
-  <header class="navy-header text-white py-5 px-6 shadow-md">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <div>
-        <h1 class="text-xl font-bold tracking-tight">⚙️ B2B 기술 홍보 블로그 스튜디오</h1>
-        <p class="text-xs text-slate-400 mt-1">자료가 없어도 AI 주제 자동 추천부터 전문 블로그 원고까지 원클릭으로 생성됩니다.</p>
-      </div>
-      <span class="text-xs bg-blue-600/30 border border-blue-400/40 text-blue-200 px-3 py-1 rounded-full">
-        Gemini API 연동
-      </span>
-    </div>
-  </header>
-
-  <!-- 메인 컨텐츠 -->
-  <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-    
-    <!-- 좌측: 입력 패널 (5칸) -->
-    <section class="lg:col-span-5 bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
-      
-      <!-- Step 1. 카테고리 선택 -->
-      <div>
-        <label class="block text-sm font-bold text-slate-900 mb-2">1. 글 카테고리 선택</label>
-        <div class="grid grid-cols-3 gap-2" id="category-group">
-          <button type="button" data-cat="case" class="cat-btn tab-active py-2.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 transition">
-            🏭 납품/구축 사례
-          </button>
-          <button type="button" data-cat="tech" class="cat-btn bg-slate-50 text-slate-600 py-2.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-100 transition">
-            🔍 장비/기술 소개
-          </button>
-          <button type="button" data-cat="trouble" class="cat-btn bg-slate-50 text-slate-600 py-2.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-100 transition">
-            🛠️ 트러블슈팅/노하우
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 2. 핵심 포인트 입력 + AI 자동 추천 버튼 -->
-      <div class="space-y-4 pt-2 border-t border-slate-100">
-        <div class="flex justify-between items-center">
-          <label class="block text-sm font-bold text-slate-900">2. 핵심 포인트</label>
-          <button type="button" id="autofill-btn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm">
-            <span>🪄 AI 자동 추천 / 빈칸 채우기</span>
-          </button>
-        </div>
-        <p class="text-[11px] text-slate-500 -mt-2">
-          💡 아무것도 안 넣고 <b>[🪄 AI 자동 추천]</b>을 누르면 오늘 쓸 만한 주제를 알아서 기획해 줍니다! (PDF나 메모가 있으면 그 내용을 바탕으로 채워줍니다.)
-        </p>
-        
-        <div>
-          <span class="text-xs font-medium text-slate-500" id="label-1">타겟 업종 / 적용 공정</span>
-          <input type="text" id="input-1" placeholder="직접 입력하거나 우측 상단 [🪄 AI 자동 추천] 클릭" 
-            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600">
-        </div>
-
-        <div>
-          <span class="text-xs font-medium text-slate-500" id="label-2">현장 이슈 / 기존 한계점</span>
-          <input type="text" id="input-2" placeholder="예: 수동 작업으로 인한 위치 오차 및 택트타임 지연" 
-            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600">
-        </div>
-
-        <div>
-          <span class="text-xs font-medium text-slate-500" id="label-3">적용 솔루션 및 개선 효과</span>
-          <input type="text" id="input-3" placeholder="예: 비전 얼라인 + 레이저 자동화 시스템으로 불량률 0% 달성" 
-            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600">
-        </div>
-      </div>
-
-      <!-- Step 3. 현장 자료 투척 (선택사항) -->
-      <div class="space-y-4 pt-2 border-t border-slate-100">
-        <label class="block text-sm font-bold text-slate-900">3. 현장 자료 투입 (선택사항 - 없어도 생성 가능)</label>
-        
-        <div>
-          <span class="text-xs font-medium text-slate-500">제안서/사양서 텍스트 또는 간단한 아이디어 메모</span>
-          <textarea id="raw-data" rows="3" placeholder="여기에 단어 몇 개만 적고 [🪄 AI 자동 추천]을 누르셔도 2번 빈칸이 꽉 채워집니다." 
-            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600"></textarea>
-        </div>
-
-        <div>
-          <span class="text-xs font-medium text-slate-500 block mb-1">현장 사진 / 제안서(PDF) 첨부 (최대 5개)</span>
-          <input type="file" id="image-upload" accept="image/*,application/pdf" multiple 
-            class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
-          <div id="image-preview" class="flex flex-wrap gap-2 mt-2"></div>
-        </div>
-      </div>
-
-      <!-- 생성 버튼 -->
-      <button id="generate-btn" class="w-full navy-header hover:bg-slate-800 text-white font-semibold py-3 rounded-lg text-sm transition flex justify-center items-center gap-2 shadow-sm">
-        <span>✨ 블로그 원고 자동 생성하기</span>
-      </button>
-
-    </section>
-
-    <!-- 우측: 출력 패널 (7칸) -->
-    <section class="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col min-h-[600px]">
-      <div class="flex justify-between items-center pb-4 border-b border-slate-200">
-        <h2 class="text-sm font-bold text-slate-900">📄 생성된 블로그 원고</h2>
-        <button id="copy-btn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-md transition">
-          📋 전체 복사하기
-        </button>
-      </div>
-
-      <div id="output-area" class="flex-1 mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-800">💡 글감이 떠오르지 않으신다면?
-좌측의 [🪄 AI 자동 추천 / 빈칸 채우기] 버튼을 눌러보세요!
-우리 회사 주력 아이템에 딱 맞는 주제를 AI가 먼저 세팅해 드립니다.</div>
-    </section>
-
-  </main>
-
-  <script>
-    let selectedCategory = 'case';
-    let base64Images = [];
-
-    const labels = {
-      case: ['타겟 업종 / 적용 공정', '현장 이슈 / 기존 한계점', '적용 솔루션 및 개선 효과'],
-      tech: ['소개할 장비 / 솔루션명', '핵심 기술 원리 및 스펙', '현장 도입 시 기대 효과'],
-      trouble: ['발생한 공정 문제 / 불량 현상', '원인 분석 (기구/제어/광학 등)', '해결 메커니즘 및 재발 방지책']
-    };
-
-    document.querySelectorAll('.cat-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.cat-btn').forEach(b => {
-          b.classList.remove('tab-active');
-          b.classList.add('bg-slate-50', 'text-slate-600');
-        });
-        btn.classList.add('tab-active');
-        btn.classList.remove('bg-slate-50', 'text-slate-600');
-        
-        selectedCategory = btn.dataset.cat;
-        document.getElementById('label-1').innerText = labels[selectedCategory][0];
-        document.getElementById('label-2').innerText = labels[selectedCategory][1];
-        document.getElementById('label-3').innerText = labels[selectedCategory][2];
-      });
-    });
-
-    // 파일 업로드 (이미지 + PDF)
-    document.getElementById('image-upload').addEventListener('change', async (e) => {
-      const files = Array.from(e.target.files).slice(0, 5);
-      base64Images = [];
-      const preview = document.getElementById('image-preview');
-      preview.innerHTML = '';
-
-      for (const file of files) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64String = event.target.result.split(',')[1];
-          base64Images.push({ mimeType: file.type, data: base64String });
-          
-          if (file.type.startsWith('image/')) {
-            const img = document.createElement('img');
-            img.src = event.target.result;
-            img.className = 'w-16 h-16 object-cover rounded border border-slate-300';
-            preview.appendChild(img);
-          } else {
-            const docBadge = document.createElement('div');
-            docBadge.className = 'px-3 py-2 bg-slate-100 border border-slate-300 rounded text-xs font-semibold text-slate-700 flex items-center gap-1';
-            docBadge.innerText = `📄 ${file.name.slice(0, 18)}...`;
-            preview.appendChild(docBadge);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    // [신규 기능] 🪄 AI 자동 추천 / 빈칸 채우기 버튼
-    document.getElementById('autofill-btn').addEventListener('click', async () => {
-      const autoBtn = document.getElementById('autofill-btn');
-      const originalText = autoBtn.innerHTML;
-      autoBtn.disabled = true;
-      autoBtn.innerHTML = '<span>⏳ AI가 주제 기획 중...</span>';
-
-      try {
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mode: 'recommend',
-            category: selectedCategory,
-            input1: document.getElementById('input-1').value,
-            rawData: document.getElementById('raw-data').value,
-            images: base64Images
-          })
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        if (data.recommendation) {
-          document.getElementById('input-1').value = data.recommendation.input1 || '';
-          document.getElementById('input-2').value = data.recommendation.input2 || '';
-          document.getElementById('input-3').value = data.recommendation.input3 || '';
-        }
-      } catch (err) {
-        alert('자동 추천 중 오류가 발생했습니다: ' + err.message);
-      } finally {
-        autoBtn.disabled = false;
-        autoBtn.innerHTML = originalText;
-      }
-    });
-
-    // 블로그 원고 생성 요청
+// 블로그 원고 실시간 스트리밍 생성 요청
     document.getElementById('generate-btn').addEventListener('click', async () => {
       const btn = document.getElementById('generate-btn');
       const output = document.getElementById('output-area');
@@ -227,8 +14,8 @@
       };
 
       btn.disabled = true;
-      btn.innerHTML = '<span>⏳ 원고 작성 중... (약 5~10초 소요)</span>';
-      output.innerText = '전문 기술 블로그 원고를 작성하고 있습니다...';
+      btn.innerHTML = '<span>⚡ 실시간 원고 작성 중...</span>';
+      output.innerText = ''; // 화면 비우고 타이핑 시작 준비
 
       try {
         const res = await fetch('/api/generate', {
@@ -236,9 +23,37 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        output.innerText = data.result;
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error?.message || errData.error || '호출 실패');
+        }
+
+        // 실시간 스트림 리더기로 한 글자씩 화면에 즉시 출력
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr || jsonStr === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(jsonStr);
+                const chunkText = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                output.innerText += chunkText;
+              } catch (e) {}
+            }
+          }
+        }
       } catch (err) {
         output.innerText = '오류가 발생했습니다: ' + err.message;
       } finally {
@@ -246,13 +61,3 @@
         btn.innerHTML = '<span>✨ 블로그 원고 자동 생성하기</span>';
       }
     });
-
-    // 복사 버튼
-    document.getElementById('copy-btn').addEventListener('click', () => {
-      const text = document.getElementById('output-area').innerText;
-      navigator.clipboard.writeText(text);
-      alert('블로그 원고가 클립보드에 복사되었습니다!');
-    });
-  </script>
-</body>
-</html>
