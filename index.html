@@ -84,8 +84,9 @@
 
         <div>
           <span class="text-xs font-medium text-slate-500 block mb-1">현장 장비 사진 / 화면 캡처 첨부 (최대 3장)</span>
-          <input type="file" id="image-upload" accept="image/*" multiple 
-            class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+         <input type="file" id="image-upload" accept="image/*,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple 
+  class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+<p class="text-[11px] text-slate-400 mt-1">
           <div id="image-preview" class="flex gap-2 mt-2 overflow-x-auto"></div>
         </div>
       </div>
@@ -142,27 +143,35 @@
       });
     });
 
-    // 이미지 업로드 -> Base64 변환 및 미리보기
-    document.getElementById('image-upload').addEventListener('change', async (e) => {
-      const files = Array.from(e.target.files).slice(0, 3);
-      base64Images = [];
-      const preview = document.getElementById('image-preview');
-      preview.innerHTML = '';
+   // 파일 업로드 (이미지 + PDF/PPT 문서 통합 처리)
+document.getElementById('image-upload').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files).slice(0, 5); // 최대 5개까지
+  base64Images = [];
+  const preview = document.getElementById('image-preview');
+  preview.innerHTML = '';
 
-      for (const file of files) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64String = event.target.result.split(',')[1];
-          base64Images.push({ mimeType: file.type, data: base64String });
-          
-          const img = document.createElement('img');
-          img.src = event.target.result;
-          img.className = 'w-16 h-16 object-cover rounded border border-slate-300';
-          preview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target.result.split(',')[1];
+      base64Images.push({ mimeType: file.type, data: base64String });
+      
+      if (file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = event.target.result;
+        img.className = 'w-16 h-16 object-cover rounded border border-slate-300';
+        preview.appendChild(img);
+      } else {
+        // PDF나 PPT 등 문서 파일인 경우 아이콘 박스 표시
+        const docBadge = document.createElement('div');
+        docBadge.className = 'px-3 py-2 bg-slate-100 border border-slate-300 rounded text-xs font-semibold text-slate-700 flex items-center gap-1';
+        docBadge.innerText = `📄 ${file.name.slice(0, 15)}...`;
+        preview.appendChild(docBadge);
       }
-    });
+    };
+    reader.readAsDataURL(file);
+  }
+});
 
     // 생성 요청
     document.getElementById('generate-btn').addEventListener('click', async () => {
