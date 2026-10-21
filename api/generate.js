@@ -245,6 +245,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ recommendation: parsed });
     } catch (err) {
       const message = err.name === 'AbortError' ? 'AI 응답이 너무 오래 걸려 중단되었습니다. 다시 눌러주세요.' : err.message;
+      console.error(JSON.stringify({ mode: 'recommend', ms: Date.now() - startedAt, error: message }));
       return res.status(500).json({ error: message });
     }
   }
@@ -301,6 +302,7 @@ export default async function handler(req, res) {
       { stream: true, deadline }
     );
   } catch (err) {
+    console.error(JSON.stringify({ mode: 'generate', ms: Date.now() - startedAt, error: err.message }));
     return res.status(500).json({ error: err.message });
   }
 
