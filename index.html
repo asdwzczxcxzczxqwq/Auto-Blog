@@ -250,23 +250,49 @@
 
     // ───────── 서버 호출 공통 함수 ─────────
     // Vercel이 413/504 등을 HTML로 돌려줘도 "Unexpected token" 대신 원인을 알려줌
-    async function postJSON(payload) {
-      const res = await fetch('/api/generate', {
+    function callApi(payload) {
+      return fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+    }
+
+    async function readJSON(res) {
       const raw = await res.text();
       let data;
       try {
         data = JSON.parse(raw);
       } catch {
         if (res.status === 413) throw new Error('첨부 파일 용량이 너무 큽니다. 사진 수를 줄이거나 PDF 용량을 줄여주세요.');
-        if (res.status === 504) throw new Error('서버 처리 시간(60초)을 넘었습니다. 첨부 파일을 줄이고 다시 시도해 주세요.');
+        if (res.status === 504) throw new Error('서버 처리 시간을 넘었습니다. 잠시 후 다시 시도해 주세요.');
         throw new Error(`서버 응답 오류 (HTTP ${res.status})`);
       }
       if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
       return data;
+    }
+
+    async function postJSON(payload) {
+      return readJSON(await callApi(payload));
+    }
+
+    // 원고 생성: 서버가 글을 쓰는 대로 조각조각 받아서 onText로 넘김
+    async function postStream(payload, onText) {
+      const res = await callApi(payload);
+      const type = res.headers.get('content-type') || '';
+      // 응답 시작 전에 실패한 경우는 서버가 JSON 에러를 보냄
+      if (!res.ok || type.includes('application/json')) {
+        await readJSON(res);
+        throw new Error(`서버 응답 오류 (HTTP ${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        onText(decoder.decode(value, { stream: true }));
+      }
+      onText(decoder.decode());
     }
 
     // ───────── 🪄 AI 자동 추천 / 빈칸 채우기 ─────────
@@ -305,12 +331,19 @@
       const output = document.getElementById('output-area');
 
       btn.disabled = true;
-      btn.innerHTML = '<span>⏳ 원고 작성 중... (보통 20~40초, 첨부가 많으면 더 걸립니다)</span>';
-      output.textContent = '전문 기술 블로그 원고를 작성하고 있습니다...';
+      const started = Date.now();
+      let received = false;
+      const tick = () => {
+        const sec = Math.round((Date.now() - started) / 1000);
+        btn.innerHTML = `<span>⏳ ${received ? '원고 작성 중' : 'AI가 내용 구상 중'}... ${sec}초</span>`;
+      };
+      tick();
+      const ticker = setInterval(tick, 1000);
+      output.textContent = '전문 기술 블로그 원고를 구상하고 있습니다... (글이 시작되면 여기에 바로 표시됩니다)';
 
       try {
         if (filesLoading) await filesLoading;
-        const data = await postJSON({
+        await postStream({
           mode: 'generate',
           category: selectedCategory,
           input1: document.getElementById('input-1').value,
@@ -318,11 +351,19 @@
           input3: document.getElementById('input-3').value,
           rawData: document.getElementById('raw-data').value,
           images: attachedFiles
+        }, (text) => {
+          if (!text) return;
+          if (!received) { received = true; output.textContent = ''; }
+          const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 40;
+          output.textContent += text;
+          if (atBottom) output.scrollTop = output.scrollHeight; // 읽는 중이면 스크롤을 뺏지 않음
         });
-        output.textContent = data.result;
+        if (!received) output.textContent = '오류가 발생했습니다: 서버에서 받은 내용이 없습니다. 다시 시도해 주세요.';
       } catch (err) {
-        output.textContent = '오류가 발생했습니다: ' + err.message;
+        if (received) output.textContent += '\n\n⚠️ 연결이 끊겼습니다: ' + err.message;
+        else output.textContent = '오류가 발생했습니다: ' + err.message;
       } finally {
+        clearInterval(ticker);
         btn.disabled = false;
         btn.innerHTML = '<span>✨ 블로그 원고 자동 생성하기</span>';
       }
