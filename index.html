@@ -1,919 +1,548 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-
-  <!-- OG: 실제 도메인 및 메인 사진 적용 완료 -->
-  <meta property="og:url" content="https://bjdh-wedding-card.vercel.app/" />
-  <meta property="og:title" content="김병준 ♥ 공단희 결혼합니다" />
-  <meta property="og:description" content="2026년 11월 07일 (토) 오후 2시 · 파티 더 풀문" />
-  <meta property="og:image" content="https://bjdh-wedding-card.vercel.app/images/main.jpg" />
-  <meta property="og:type" content="website" />
-
-  <title>김병준 ♥ 공단희 | 모바일 청첩장</title>
-
-  <!-- ✅ 로딩 최적화: 메인 이미지/폰트 preload -->
-  <link rel="preload" as="image" href="images/main.jpg" fetchpriority="high">
-  <link rel="preload" href="fonts/font1.ttf" as="font" type="font/truetype" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B2B 기술 블로그 자동 생성기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root{
-      --bg:#f7f6f4;
-      --card:#ffffff;
-      --ink:#111;
-      --muted:#6c6c6c;
-      --line:rgba(0,0,0,.08);
-      --shadow:0 12px 40px rgba(0,0,0,.06);
-      --radius:22px;
-      --max:480px;
-    }
-
-    *{box-sizing:border-box}
-    
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      height: 100svh;
-      overflow: hidden;
-      background: #1a1a1a;
-      font-family: "Noto Serif KR","Nanum Myeongjo",serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .snap-container {
-      width: 100%;
-      max-width: var(--max);
-      height: 100%;
-      height: 100svh;
-      margin: 0 auto;
-      overflow-y: scroll;
-      scroll-snap-type: y mandatory;
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-      background: var(--bg);
-      position: relative;
-    }
-
-    .snap-container::-webkit-scrollbar { display: none; }
-    .snap-container { -ms-overflow-style: none; scrollbar-width: none; }
-
-    .page-section {
-      width: 100%;
-      height: 100%;
-      height: 100svh;
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 24px 20px;
-      position: relative;
-    }
-
-    a{color:inherit;text-decoration:none}
-    img{max-width:100%;display:block}
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 24px 20px;
-      width: 100%;
-    }
-
-    .sec-head{text-align:center;margin:0 0 16px;padding:0 6px}
-    .h2{font-size:21px;margin:0;font-weight:700;letter-spacing:-0.02em}
-    .p{margin:12px 0 0;color:var(--muted);font-size:14.5px;line-height:1.8}
-
-    @font-face{
-      font-family:"WeddingFont";
-      src:url("fonts/font1.ttf") format("truetype");
-      font-weight:normal;
-      font-style:normal;
-      font-display:swap;
-    }
-
-    /* HERO */
-    .hero-page { padding: 0; background: #111; overflow: hidden; }
-    .hero-slide { position: relative; width: 100%; height: 100%; }
-    .hero-slide img{
-      position:absolute;inset:0;
-      width:100%;height:100%;
-      object-fit:cover;
-      object-position: center 20%;
-    }
-    .hero-overlay{
-      position:absolute;inset:0;
-      background:
-        radial-gradient(1100px 700px at 50% 25%, rgba(0,0,0,.10), transparent 55%),
-        linear-gradient(to bottom, rgba(0,0,0,.12), rgba(0,0,0,.75));
-    }
-    .hero-center{
-      position:relative;z-index:2;
-      height:100%;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-end;
-      text-align:center;
-      padding: 30px 20px 40px;
-      color:#fff;
-    }
-    .wm {
-      position:absolute;
-      top: 15%; 
-      left:50%;
-      transform:translate(-50%, -50%); 
-      font-family:"WeddingFont", serif;
-      font-size:54px;
-      color:#7fd3ff;
-      text-shadow:0 10px 30px rgba(0,0,0,.6);
-      z-index:3;
-      width:min(90vw, 420px);
-      text-align:center;
-    }
-    .wm .type{
-      display:block;
-      white-space:pre-line;
-      clip-path: inset(0 100% 0 0);
-    }
-    @keyframes typing{
-      from{ clip-path: inset(0 100% 0 0); }
-      to{   clip-path: inset(0 0 0 0); }
-    }
-    .hero-names{
-      font-family:"Nanum Myeongjo",serif;
-      font-size:32px;
-      font-weight:800;
-      letter-spacing:.05em;
-      margin:0;
-      text-shadow:0 18px 60px rgba(0,0,0,.45);
-    }
-    .hero-date{margin-top:10px;font-size:15px;letter-spacing:.10em}
-    .hero-venue{margin-top:6px;font-size:14px;opacity:.95}
-
-    .scroll-hint{
-      margin-top:18px;
-      font-size:11px;
-      letter-spacing:.2em;
-      opacity:.85;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:6px;
-      color:#fff;
-    }
-    .chev{
-      width:18px;height:18px;
-      border-right:2px solid rgba(255,255,255,.75);
-      border-bottom:2px solid rgba(255,255,255,.75);
-      transform:rotate(45deg);
-      animation: float 1.6s ease-in-out infinite;
-    }
-    @keyframes float{
-      0%,100%{transform:rotate(45deg) translateY(0)}
-      50%{transform:rotate(45deg) translateY(6px)}
-    }
-
-    /* Music UI */
-    .music{
-      position:fixed;
-      top:16px;
-      right:16px;
-      z-index:9990;
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .music-btn{
-      width:42px;height:42px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.28);
-      background:rgba(0,0,0,.35);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color:#fff;
-      display:flex;align-items:center;justify-content:center;
-      cursor:pointer;
-      flex-shrink: 0;
-    }
-    .music-tip{
-      max-width:200px;
-      padding:8px 12px;
-      border-radius:12px;
-      background:rgba(0,0,0,.6);
-      color:#fff;
-      font-size:12px;
-      backdrop-filter: blur(8px);
-      display:none;
-      white-space: nowrap;
-    }
-    .music-tip.on{
-      display:block;
-      animation: tipPulse 2s infinite ease-in-out;
-    }
-    @keyframes tipPulse {
-      0%, 100% { transform: translateX(0); opacity: 1; }
-      50% { transform: translateX(-4px); opacity: 0.8; }
-    }
-
-    /* ===== CALENDAR (NEW) ===== */
-    .cal-wrap { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); text-align: center; }
-    .cal-month { font-family: "Nanum Myeongjo", serif; font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 20px; }
-    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px 0; font-size: 14px; color: var(--ink); }
-    .cal-day { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
-    .cal-sun { color: #d65555; }
-    .cal-cell { display: flex; align-items: center; justify-content: center; height: 30px; }
-    .d-day { position: relative; font-weight: 600; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; }
-    .d-day-circle {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 42px; height: 42px;
-      fill: none;
-      stroke: #eb4d4b; /* 빨간 색연필 색상 */
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      opacity: 0.85;
-      /* 스르륵 그려지는 애니메이션 */
-      stroke-dasharray: 300;
-      stroke-dashoffset: 300;
-      animation: drawCircle 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-      animation-delay: 0.5s;
-    }
-    @keyframes drawCircle {
-      to { stroke-dashoffset: 0; }
-    }
-    .cal-datetime {
-      margin-top: 20px;
-      font-size: 14px;
-      color: var(--ink);
-      font-family: "Nanum Myeongjo", serif;
-      letter-spacing: 0.05em;
-    }
-
-    /* ===== GALLERY ===== */
-    .viewer{
-      position:relative;
-      border-radius:14px;
-      overflow:hidden;
-      border:1px solid var(--line);
-      background:#f0f0f0;
-      width: 100%;
-      aspect-ratio: 3 / 4;
-      max-height: 48svh;
-      margin: 0 auto;
-    }
-    .viewer img{
-      width:100%;
-      height:100%;
-      object-fit: cover;
-      display:block;
-      cursor:pointer;
-    }
-    .count{
-      position:absolute;top:10px;right:10px;
-      background:rgba(0,0,0,.5);
-      color:#fff;
-      border:1px solid rgba(255,255,255,.2);
-      padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700;
-      backdrop-filter: blur(4px);
-    }
-    .navbtn{
-      position:absolute;top:50%;transform:translateY(-50%);
-      width:38px;height:38px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.55);
-      background:rgba(0,0,0,.30);color:#fff;
-      display:flex;align-items:center;justify-content:center;
-      font-size:20px;cursor:pointer;user-select:none;
-      backdrop-filter: blur(4px);
-    }
-    .prev{left:10px} .next{right:10px}
-
-    .thumbs{
-      display:grid;
-      grid-template-columns:repeat(6, 1fr);
-      gap:6px;
-      margin-top:12px;
-    }
-    .thumb{
-      border-radius:8px;
-      overflow:hidden;
-      border:1.5px solid transparent;
-      background:#eee;
-      cursor:pointer;
-      aspect-ratio: 1 / 1;
-      transition: all 0.2s ease;
-    }
-    .thumb img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      opacity:.55;
-      transition: opacity 0.2s ease;
-    }
-    .thumb.on{
-      border-color:var(--ink);
-      transform: translateY(-2px);
-    }
-    .thumb.on img{
-      opacity:1;
-    }
-
-    /* Map */
-    .map{
-      position:relative;display:block;border-radius:14px;overflow:hidden;
-      border:1px solid var(--line);background:#eee;
-    }
-    .map img{width:100%;height:180px;object-fit:cover;display:block}
-    .map-badge{
-      position:absolute;right:10px;top:10px;padding:6px 9px;border-radius:999px;
-      background:rgba(255,255,255,.95);border:1px solid var(--line);font-size:11px;font-weight:800;
-    }
-    .addr-row{display:flex;gap:6px;align-items:stretch;margin-top:10px}
-    .addr-box{
-      flex:1;border:1px solid var(--line);border-radius:12px;
-      padding:10px 12px;background:rgba(0,0,0,.02);
-      font-size:13px;line-height:1.4;word-break:keep-all;
-    }
-    .copy-mini{
-      border:1px solid var(--line);background:#fff;border-radius:12px;
-      padding:0 14px;font-size:13px;cursor:pointer;
-    }
-    .nav-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-    .navbtn2{
-      display:flex;align-items:center;justify-content:center;gap:6px;
-      padding:10px 6px;border-radius:12px;border:1px solid var(--line);
-      background:#fff;font-size:13px;
-    }
-    .ico{
-      width:24px;height:24px;border-radius:8px;border:1px solid var(--line);
-      display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;
-    }
-    .ico.naver{background:rgba(3,199,90,.12)}
-    .ico.kakao{background:rgba(255,226,0,.18)}
-    .ico.tmap{background:rgba(0,0,0,.06)}
-
-    /* Button */
-    .btn{
-      background:#111;color:#fff;
-      padding:14px;border-radius:14px;font-size:14.5px;
-      display:flex;align-items:center;justify-content:center;
-      cursor:pointer;border:none;width:100%;font-family:inherit;
-    }
-
-    /* Lightbox */
-    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center;z-index:9999;padding:18px}
-    .lightbox.on{display:flex}
-    .lb-inner{width:100%;max-width:900px;position:relative}
-    .lb-img{width:100%;max-height:86vh;object-fit:contain;display:block;border-radius:14px;background:#000}
-    .lb-close{position:absolute;top:-10px;right:-10px;width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-
-    /* RSVP MODAL */
-    .modal-overlay.bottom-sheet {
-      position:fixed;inset:0;background:rgba(0,0,0,0.6);
-      display:none;align-items:flex-end;justify-content:center;
-      z-index:9999;opacity:0;transition:opacity 0.3s ease;
-    }
-    .modal-overlay.bottom-sheet.on {display:flex;opacity:1}
-    .modal-overlay.bottom-sheet .modal-content {
-      background:#fff;width:100%;max-width:480px;max-height:90vh;
-      border-radius:20px 20px 0 0;overflow-y:auto;
-      transform:translateY(100%);transition:transform 0.3s ease;
-      padding-bottom:24px;
-    }
-    .modal-overlay.bottom-sheet.on .modal-content {transform:translateY(0)}
-    .modal-overlay.bottom-sheet .modal-header {
-      position:sticky;top:0;background:#fff;z-index:10;
-      display:flex;align-items:center;justify-content:center;
-      padding:16px 20px;border-bottom:1px solid var(--line);
-    }
-    .modal-overlay.bottom-sheet .modal-header h3 {margin:0;font-size:16px;font-weight:700}
-    
-    .modal-close-btn {
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 24px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0;
-    }
-    .modal-close-btn:active {
-      color: var(--ink);
-      background: rgba(0,0,0,.05);
-    }
-
-    .form-body {padding:20px;text-align:left}
-    .form-desc {text-align:center;font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px}
-    .input-label {font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px}
-    .input-text {width:100%;border:none;border-bottom:1px solid var(--line);padding:10px 0;font-size:14px;outline:none;background:transparent;font-family:inherit}
-    .radio-group {display:flex;gap:10px;margin:8px 0 20px}
-    .radio-btn {flex:1;text-align:center;padding:12px 0;border:1px solid var(--line);background:#f9f9f9;border-radius:10px;font-size:13px;cursor:pointer;display:flex;justify-content:center;align-items:center;gap:6px}
-    .radio-btn input {display:none}
-    .radio-btn.active {border-color:var(--ink);background:#fff;font-weight:700}
-    .radio-btn.active::after {content:'';width:12px;height:12px;background:var(--ink);border-radius:50%;display:inline-block}
-
-    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(17,17,17,.92);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:9999}
-    .toast.on{opacity:1}
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; }
+    .navy-header { background-color: #0f172a; }
+    .tab-active { background-color: #1e293b; color: #ffffff; border-color: #1e293b; }
   </style>
 </head>
+<body class="text-slate-800">
 
-<body>
+  <!-- 상단 헤더 -->
+  <header class="navy-header text-white py-5 px-6 shadow-md">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight">⚙️ B2B 기술 홍보 블로그 스튜디오</h1>
+        <p class="text-xs text-slate-400 mt-1">자료가 없어도 AI 주제 자동 추천부터 전문 블로그 원고까지 원클릭으로 생성됩니다.</p>
+      </div>
+      <span class="text-xs bg-blue-600/30 border border-blue-400/40 text-blue-200 px-3 py-1 rounded-full">
+        Gemini API 연동
+      </span>
+    </div>
+  </header>
 
-  <!-- BGM Control -->
-  <div class="music">
-    <div class="music-tip on" id="musicTip">화면을 터치하면 음악이 재생돼요</div>
-    <button class="music-btn" id="musicBtn" aria-label="배경음악 재생/정지">♫</button>
-  </div>
-  <audio id="bgm" src="audio/couple.mp3" preload="auto" loop></audio>
-
-  <!-- 풀스크롤 컨테이너 -->
-  <main class="snap-container" id="snapContainer">
-
-    <!-- PAGE 1: HERO -->
-    <section class="page-section hero-page" id="top">
-      <div class="hero-slide">
-        <img src="images/main.jpg" alt="메인 사진" fetchpriority="high">
-        <div class="hero-overlay"></div>
-
-        <div class="wm">
-          <span class="type"></span>
-        </div>
-
-        <div class="hero-center">
-          <h1 class="hero-names">김병준 <span style="opacity:.75">♥</span> 공단희</h1>
-          <div class="hero-date">2026.11.07 (SAT) · 2:00 PM</div>
-          <div class="hero-venue">파티 더 풀문</div>
-
-          <div class="scroll-hint">
-            <span>SCROLL</span>
-            <span class="chev"></span>
-          </div>
+  <!-- 메인 컨텐츠 -->
+  <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- 좌측: 입력 패널 (5칸) -->
+    <section class="lg:col-span-5 bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+      
+      <!-- Step 1. 카테고리 선택 -->
+      <div>
+        <label class="block text-sm font-bold text-slate-900 mb-2">1. 글 카테고리 선택</label>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="category-group">
+          <button type="button" data-cat="case" class="cat-btn tab-active py-2.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 transition">
+            🏭 납품/구축 사례
+          </button>
+          <button type="button" data-cat="tech" class="cat-btn bg-slate-50 text-slate-600 py-2.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-100 transition">
+            🔍 장비/기술 소개
+          </button>
+          <button type="button" data-cat="trouble" class="cat-btn bg-slate-50 text-slate-600 py-2.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-100 transition">
+            🛠️ 운영 가이드/트러블슈팅
+          </button>
+          <button type="button" data-cat="product" class="cat-btn bg-slate-50 text-slate-600 py-2.5 px-3 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-100 transition">
+            📦 제품/소모품 정리
+          </button>
         </div>
       </div>
+
+      <!-- Step 2. 핵심 포인트 입력 + AI 자동 추천 버튼 -->
+      <div class="space-y-4 pt-2 border-t border-slate-100">
+        <div class="flex justify-between items-center">
+          <label class="block text-sm font-bold text-slate-900">2. 핵심 포인트</label>
+          <button type="button" id="autofill-btn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm">
+            <span>🪄 AI 자동 추천 / 빈칸 채우기</span>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-500 -mt-2">
+          💡 아무것도 안 넣고 <b>[🪄 AI 자동 추천]</b>을 누르면 오늘 쓸 만한 주제를 알아서 기획해 줍니다! (PDF나 메모가 있으면 그 내용을 바탕으로 채워줍니다.)
+        </p>
+        
+        <div>
+          <span class="text-xs font-medium text-slate-500">다룰 아이템</span>
+          <select id="item-select" class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:border-blue-600">
+            <option value="">🎲 자동 선택 (블로그에서 아직 안 다룬 아이템 우선)</option>
+          </select>
+          <p id="item-note" class="text-[11px] text-blue-700 mt-1 hidden"></p>
+        </div>
+
+        <div>
+          <span class="text-xs font-medium text-slate-500" id="label-1">타겟 업종 / 적용 공정</span>
+          <input type="text" id="input-1" placeholder="직접 입력하거나 우측 상단 [🪄 AI 자동 추천] 클릭" 
+            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600">
+        </div>
+
+        <div>
+          <span class="text-xs font-medium text-slate-500" id="label-2">현장 이슈 / 기존 한계점</span>
+          <input type="text" id="input-2" placeholder="예: 수동 작업으로 인한 위치 오차 및 택트타임 지연" 
+            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600">
+        </div>
+
+        <div>
+          <span class="text-xs font-medium text-slate-500" id="label-3">적용 솔루션 및 개선 효과</span>
+          <input type="text" id="input-3" placeholder="예: 비전 얼라인 + 레이저 자동화 시스템으로 불량률 0% 달성" 
+            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600">
+        </div>
+      </div>
+
+      <!-- Step 3. 현장 자료 투척 (선택사항) -->
+      <div class="space-y-4 pt-2 border-t border-slate-100">
+        <label class="block text-sm font-bold text-slate-900">3. 현장 자료 투입 (선택사항 - 없어도 생성 가능)</label>
+        
+        <div>
+          <span class="text-xs font-medium text-slate-500">제안서/사양서 텍스트 또는 간단한 아이디어 메모</span>
+          <textarea id="raw-data" rows="3" placeholder="여기에 단어 몇 개만 적고 [🪄 AI 자동 추천]을 누르셔도 2번 빈칸이 꽉 채워집니다." 
+            class="w-full mt-1 px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600"></textarea>
+        </div>
+
+        <div>
+          <span class="text-xs font-medium text-slate-500 block mb-1">현장 사진 / 제안서(PDF) 첨부 (최대 5개 · 사진은 자동 압축 · PDF는 2.5MB 이하)</span>
+          <input type="file" id="image-upload" accept="image/*,application/pdf" multiple 
+            class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+          <div id="image-preview" class="flex flex-wrap gap-2 mt-2"></div>
+        </div>
+      </div>
+
+      <!-- 생성 버튼 -->
+      <button id="generate-btn" class="w-full navy-header hover:bg-slate-800 text-white font-semibold py-3 rounded-lg text-sm transition flex justify-center items-center gap-2 shadow-sm">
+        <span>✨ 블로그 원고 자동 생성하기</span>
+      </button>
+
     </section>
 
-    <!-- PAGE 2: INVITATION -->
-    <section class="page-section" id="invitation">
-      <div class="card">
-        <div class="sec-head">
-          <h2 class="h2">초대합니다</h2>
-          <p class="p">
-            서로의 하루가 되어 걸어온 두 사람이<br/>
-            이제 같은 길을 함께 걷고자 합니다.<br/>
-            소중한 날, 귀한 걸음으로 축복해 주세요.
-          </p>
-        </div>
-
-        <div style="margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; align-items: center;">
-          <div style="display: flex; flex-direction: column; gap: 14px; width: fit-content;">
-            
-            <!-- 신랑 측 -->
-            <div style="display: flex; align-items: baseline;">
-              <div style="width: 126px; text-align: right; font-size: 15px; color: var(--ink); letter-spacing: 0.02em;">
-                김우정 · 이경숙
-              </div>
-              <div style="width: 58px; text-align: center; font-size: 13px; color: var(--muted);">
-                의 아들
-              </div>
-              <div style="width: 48px; text-align: left; font-size: 18px; font-weight: 700; color: var(--ink);">
-                병준
-              </div>
-            </div>
-
-            <!-- 신부 측 -->
-            <div style="display: flex; align-items: baseline;">
-              <div style="width: 126px; text-align: right; font-size: 15px; color: var(--ink); letter-spacing: 0.02em;">
-                공성대 · 김희주
-              </div>
-              <div style="width: 58px; text-align: center; font-size: 13px; color: var(--muted);">
-                의 딸
-              </div>
-              <div style="width: 48px; text-align: left; font-size: 18px; font-weight: 700; color: var(--ink);">
-                단희
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- 감성 달력 영역 추가 -->
-        <div class="cal-wrap">
-          <div class="cal-month">2026. 11</div>
-          <div class="cal-grid">
-            <!-- 요일 헤더 -->
-            <div class="cal-cell cal-day cal-sun">S</div>
-            <div class="cal-cell cal-day">M</div>
-            <div class="cal-cell cal-day">T</div>
-            <div class="cal-cell cal-day">W</div>
-            <div class="cal-cell cal-day">T</div>
-            <div class="cal-cell cal-day">F</div>
-            <div class="cal-cell cal-day">S</div>
-            
-            <!-- 1주차 -->
-            <div class="cal-cell cal-sun">1</div>
-            <div class="cal-cell">2</div>
-            <div class="cal-cell">3</div>
-            <div class="cal-cell">4</div>
-            <div class="cal-cell">5</div>
-            <div class="cal-cell">6</div>
-            <div class="cal-cell">
-              <span class="d-day">
-                7
-                <!-- 색연필 느낌의 동그라미 SVG -->
-                <svg class="d-day-circle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-                  <path d="M 50 15 C 20 15, 10 40, 15 65 C 20 90, 75 95, 85 70 C 95 45, 80 10, 50 10 C 35 10, 25 20, 20 30" />
-                </svg>
-              </span>
-            </div>
-            
-            <!-- 2주차 -->
-            <div class="cal-cell cal-sun">8</div>
-            <div class="cal-cell">9</div>
-            <div class="cal-cell">10</div>
-            <div class="cal-cell">11</div>
-            <div class="cal-cell">12</div>
-            <div class="cal-cell">13</div>
-            <div class="cal-cell">14</div>
-
-            <!-- 3주차 -->
-            <div class="cal-cell cal-sun">15</div>
-            <div class="cal-cell">16</div>
-            <div class="cal-cell">17</div>
-            <div class="cal-cell">18</div>
-            <div class="cal-cell">19</div>
-            <div class="cal-cell">20</div>
-            <div class="cal-cell">21</div>
-
-            <!-- 4주차 -->
-            <div class="cal-cell cal-sun">22</div>
-            <div class="cal-cell">23</div>
-            <div class="cal-cell">24</div>
-            <div class="cal-cell">25</div>
-            <div class="cal-cell">26</div>
-            <div class="cal-cell">27</div>
-            <div class="cal-cell">28</div>
-
-            <!-- 5주차 -->
-            <div class="cal-cell cal-sun">29</div>
-            <div class="cal-cell">30</div>
-            <div class="cal-cell"></div>
-            <div class="cal-cell"></div>
-            <div class="cal-cell"></div>
-            <div class="cal-cell"></div>
-            <div class="cal-cell"></div>
-          </div>
-          <div class="cal-datetime">2026년 11월 7일 토요일 오후 2시</div>
-        </div>
+    <!-- 우측: 출력 패널 (7칸) -->
+    <section class="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col min-h-[600px]">
+      <div class="flex justify-between items-center pb-4 border-b border-slate-200">
+        <h2 class="text-sm font-bold text-slate-900">📄 생성된 블로그 원고</h2>
+        <button id="copy-btn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-md transition">
+          📋 전체 복사하기
+        </button>
       </div>
-    </section>
 
-    <!-- PAGE 3: GALLERY -->
-    <section class="page-section" id="gallery">
-      <div class="card">
-        <div class="sec-head">
-          <h2 class="h2">GALLERY</h2>
-        </div>
-
-        <div class="viewer" id="viewer">
-          <img id="mainImg" src="images/g1.jpg" alt="갤러리 사진" loading="lazy">
-          <div class="count" id="count">1 / 6</div>
-          <div class="navbtn prev" id="prevBtn">‹</div>
-          <div class="navbtn next" id="nextBtn">›</div>
-        </div>
-
-        <!-- 6개 썸네일 미리보기 -->
-        <div class="thumbs" id="thumbs"></div>
-      </div>
-    </section>
-
-    <!-- PAGE 4: LOCATION -->
-    <section class="page-section" id="location">
-      <div class="card">
-        <div class="sec-head">
-          <h2 class="h2">오시는 길</h2>
-        </div>
-
-        <a class="map" href="https://map.naver.com/v5/search/파티 더 풀문" target="_blank" rel="noopener">
-          <img src="images/map.png" alt="지도" loading="lazy">
-          <div class="map-badge">NAVER MAP</div>
-        </a>
-
-        <div class="addr-row">
-          <div class="addr-box" id="addrBox">부산 기장군 기장해안로 98 디 101호</div>
-          <button class="copy-mini" type="button" id="copyAddrMini">복사</button>
-        </div>
-
-        <div class="nav-grid">
-          <a class="navbtn2" href="https://map.naver.com/v5/search/파티 더 풀문" target="_blank" rel="noopener">
-            <span class="ico naver">N</span><span>네이버</span>
-          </a>
-          <a class="navbtn2" href="https://map.kakao.com/link/search/파티 더 풀문" target="_blank" rel="noopener">
-            <span class="ico kakao">K</span><span>카카오</span>
-          </a>
-          <a class="navbtn2" href="https://tmap.life/search?name=파티 더 풀문" target="_blank" rel="noopener">
-            <span class="ico tmap">T</span><span>티맵</span>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- PAGE 5: RSVP -->
-    <section class="page-section" id="rsvp">
-      <div class="card" style="text-align:center;">
-        <div class="sec-head">
-          <h2 class="h2">전세버스 안내</h2>
-          <p class="p" style="margin-top:14px;">
-            먼 길을 와주시는 귀한 분들을 위해<br/>
-            전세버스를 준비하였습니다.<br/>
-            탑승 여부의 확인을 부탁드리겠습니다.
-          </p>
-        </div>
-
-        <div style="margin-top: 24px;">
-          <button class="btn" type="button" onclick="openModal('rsvpFormModal')">탑승여부 전달하기</button>
-        </div>
-
-        <footer style="margin-top: 36px; font-size: 11px; color: var(--muted); line-height: 1.6;">
-          © Wedding Invitation<br/>
-          소중한 걸음 감사드립니다.
-        </footer>
-      </div>
+      <div id="output-area" class="flex-1 mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto text-sm leading-relaxed text-slate-800"><p>💡 글감이 떠오르지 않으신다면?</p><p>좌측의 [🪄 AI 자동 추천 / 빈칸 채우기] 버튼을 눌러보세요!</p><p>기존 블로그 글과 겹치지 않는 확장 주제를 AI가 먼저 세팅해 드립니다.</p></div>
+      <p class="text-[11px] text-slate-500 mt-2">📋 전체 복사하기는 굵게·빨간 강조·소제목·표 서식까지 함께 복사합니다. 파란 상자는 사진·영상·링크를 넣을 자리입니다.</p>
     </section>
 
   </main>
 
-  <!-- LIGHTBOX -->
-  <div class="lightbox" id="lightbox">
-    <div class="lb-inner">
-      <img class="lb-img" id="lbImg" src="" alt="확대보기">
-      <div class="lb-close" id="lbClose">×</div>
-    </div>
-  </div>
-
-  <!-- RSVP MODAL -->
-  <div class="modal-overlay bottom-sheet" id="rsvpFormModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>전세버스 탑승 여부</h3>
-        <button type="button" class="modal-close-btn" onclick="closeModal('rsvpFormModal')" aria-label="닫기">×</button>
-      </div>
-      
-      <form id="rsvpForm" class="form-body" action="https://script.google.com/macros/s/AKfycbyi1hHjIyfVx_A0qrhv5NID0_3JSgKh6iBwnsCZNNE9E6KsZcunlaPfGCJa6zTxjFpP/exec" method="POST" onsubmit="submitRSVP(event)">
-        <p class="form-desc">먼 길을 와주시는 귀한 분들을 위해 전세버스를 준비하였습니다.<br>탑승 여부의 확인을 부탁드리겠습니다.</p>
-
-        <div style="margin-bottom: 20px;">
-          <img src="images/bus.png" alt="버스 탑승 위치 지도" style="width: 100%; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 10px;">
-          <div style="background: #fafafa; border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; line-height: 1.5;">
-            <div><strong>버스 탑승 위치 :</strong> 관악역 2번출구 [ 세븐일레븐 안양관악역점 ] 앞</div>
-            <div><strong>버스 탑승 시간 :</strong> AM 07:45 출발</div>
-          </div>
-        </div>
-
-        <div style="margin-bottom:16px;">
-          <div class="input-label">성함</div>
-          <input type="text" name="name" class="input-text" placeholder="성함을 입력해 주세요." required>
-        </div>
-
-        <div style="margin-bottom:20px;">
-          <div class="input-label">연락처</div>
-          <input type="tel" name="phone" class="input-text" placeholder="참석자 대표 연락처를 입력해 주세요." required>
-        </div>
-
-        <div class="input-label"><span style="color:red">*</span> 버스 탑승 여부</div>
-        <div class="radio-group">
-          <label class="radio-btn active">
-            <input type="radio" name="bus" value="탑승함" checked> 탑승함
-          </label>
-          <label class="radio-btn">
-            <input type="radio" name="bus" value="탑승안함"> 탑승안함
-          </label>
-        </div>
-
-        <button type="submit" class="btn" id="submitBtn">신랑 & 신부에게 전달하기</button>
-      </form>
-    </div>
-  </div>
-
-  <div class="toast" id="toast">복사되었습니다</div>
-
   <script>
-    // 복사 기능
-    const toast = document.getElementById('toast');
-    let toastTimer = null;
-    function showToast(msg){
-      toast.textContent = msg;
-      toast.classList.add('on');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=>toast.classList.remove('on'), 1400);
-    }
-    async function copyToClipboard(text){
-      try{
-        await navigator.clipboard.writeText(text);
-        showToast('복사되었습니다');
-      }catch{
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast('복사되었습니다');
-      }
-    }
-    document.getElementById('copyAddrMini')?.addEventListener('click', ()=>{
-      copyToClipboard(document.getElementById('addrBox').innerText.trim());
-    });
+    let selectedCategory = 'case';
+    let attachedFiles = [];   // 서버로 보낼 [{ mimeType, data }]
+    let filesLoading = null;  // 파일 변환 진행 중인 Promise (끝나기 전에 전송하지 않도록)
 
-    // 갤러리 슬라이더 및 썸네일 연동
-    const images = [
-      "images/g1.jpg","images/g2.jpg","images/g3.jpg",
-      "images/g4.jpg","images/g5.jpg","images/g6.jpg",
-    ];
-    let idx = 0;
-    const mainImg = document.getElementById('mainImg');
-    const count = document.getElementById('count');
-    const thumbs = document.getElementById('thumbs');
+    // Vercel 함수 요청 본문 한도는 4.5MB → base64(원본의 약 1.33배) + JSON 여유를 고려한 상한
+    const MAX_FILES = 5;
+    const MAX_PDF_BYTES = 2.5 * 1024 * 1024;
+    const MAX_TOTAL_BASE64 = 3.5 * 1024 * 1024;
+    const IMAGE_MAX_SIDE = 1600;   // 긴 변 1600px로 축소 (블로그 원고 작성에는 충분)
+    const IMAGE_QUALITY = 0.85;
 
-    function renderThumbs(){
-      thumbs.innerHTML = "";
-      images.forEach((src, i)=>{
-        const div = document.createElement('div');
-        div.className = "thumb" + (i === idx ? " on" : "");
-        div.innerHTML = `<img src="${src}" loading="lazy" alt="thumb ${i+1}">`;
-        div.addEventListener('click', ()=> setIndex(i));
-        thumbs.appendChild(div);
-      });
-    }
-
-    function setIndex(i){
-      idx = (i + images.length) % images.length;
-      mainImg.src = images[idx];
-      count.textContent = `${idx+1} / ${images.length}`;
-      renderThumbs();
-    }
-
-    document.getElementById('prevBtn').addEventListener('click', ()=> setIndex(idx - 1));
-    document.getElementById('nextBtn').addEventListener('click', ()=> setIndex(idx + 1));
-
-    // 터치 좌우 스와이프
-    let startX = null;
-    const viewer = document.getElementById('viewer');
-    viewer.addEventListener('touchstart', (e)=>{ startX = e.touches[0].clientX; }, {passive:true});
-    viewer.addEventListener('touchend', (e)=>{
-      if(startX === null) return;
-      const diff = e.changedTouches[0].clientX - startX;
-      if(Math.abs(diff) > 40){
-        diff > 0 ? setIndex(idx - 1) : setIndex(idx + 1);
-      }
-      startX = null;
-    });
-
-    // 라이트박스 (클릭 시 확대)
-    const lightbox = document.getElementById('lightbox');
-    const lbImg = document.getElementById('lbImg');
-    mainImg.addEventListener('click', () => { lbImg.src = images[idx]; lightbox.classList.add('on'); });
-    document.getElementById('lbClose').addEventListener('click', () => { lightbox.classList.remove('on'); });
-    lightbox.addEventListener('click', (e) => { if(e.target === lightbox) lightbox.classList.remove('on'); });
-
-    setIndex(0);
-
-    // 타이핑 애니메이션
-    (async ()=>{
-      try{
-        await document.fonts.load("1em WeddingFont");
-        await document.fonts.ready;
-      }catch(e){}
-      const t = document.querySelector(".wm .type");
-      if(t) t.style.animation = "typing 4.8s steps(45,end) forwards";
-    })();
-
-    // ========== 배경음악 제어 ==========
-    const bgm = document.getElementById('bgm');
-    const musicBtn = document.getElementById('musicBtn');
-    const musicTip = document.getElementById('musicTip');
-    let musicOn = false;
-
-    function setMusicUI(on){
-      musicOn = on;
-      musicBtn.textContent = on ? "❚❚" : "♫";
-      if(on) musicTip.classList.remove('on');
-    }
-
-    // 우측 상단 전용 토글 버튼
-    musicBtn.addEventListener('click', (e)=>{
-      e.stopPropagation(); // 배경 터치 이벤트가 중복 실행되지 않도록 차단
-      if(musicOn) {
-        bgm.pause();
-        setMusicUI(false);
-      } else {
-        const playPromise = bgm.play();
-        if(playPromise !== undefined){
-          playPromise.then(() => setMusicUI(true)).catch(() => setMusicUI(false));
-        }
-      }
-    });
-
-    // 화면 터치/클릭 시 재생 (브라우저 차단 우회, 동기적 실행)
-    const playOnInteraction = () => {
-      if(!musicOn) {
-        const playPromise = bgm.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            setMusicUI(true);
-            // 성공하면 더 이상 이벤트 발생 안 하도록 리스너 완전히 제거
-            document.removeEventListener('click', playOnInteraction);
-            document.removeEventListener('touchstart', playOnInteraction);
-            document.removeEventListener('pointerdown', playOnInteraction);
-          }).catch((err) => {
-            console.log('재생 차단됨:', err);
-          });
-        }
-      }
+    const labels = {
+      case: ['타겟 업종 / 적용 공정', '현장 이슈 / 기존 한계점', '적용 솔루션 및 개선 효과'],
+      tech: ['소개할 장비 / 솔루션명', '핵심 기술 원리 및 스펙', '현장 도입 시 기대 효과'],
+      trouble: ['발생한 공정 문제 / 불량 현상', '원인 분석 (기구/제어/광학 등)', '해결 메커니즘 및 재발 방지책'],
+      product: ['정리할 제품군 / 모델 번호', '구분 기준 (타입·용제·용도 등)', '추천 대상 / 문의 유도 포인트']
     };
 
-    // 사용자 상호작용 이벤트 바인딩 (이 이벤트들이 발생할 때만 브라우저가 오디오 재생을 허락함)
-    document.addEventListener('click', playOnInteraction);
-    document.addEventListener('touchstart', playOnInteraction, { passive: true });
-    document.addEventListener('pointerdown', playOnInteraction, { passive: true });
-
-    window.addEventListener('DOMContentLoaded', () => {
-      // 1.5초 후 RSVP 자동 팝업
-      if (!sessionStorage.getItem('rsvpPopped')) {
-        setTimeout(() => {
-          openModal('rsvpFormModal');
-          sessionStorage.setItem('rsvpPopped', 'true');
-        }, 1500);
-      }
-    });
-
-    // 모달 제어
-    function openModal(id) {
-      const modal = document.getElementById(id);
-      modal.style.display = 'flex';
-      void modal.offsetWidth;
-      modal.classList.add('on');
-      document.getElementById('snapContainer').style.overflowY = 'hidden';
-    }
-
-    function closeModal(id) {
-      const modal = document.getElementById(id);
-      modal.classList.remove('on');
-      document.getElementById('snapContainer').style.overflowY = 'scroll';
-      setTimeout(() => { modal.style.display = 'none'; }, 300);
-    }
-
-    // 라디오 버튼 선택
-    document.querySelectorAll('.radio-btn input[type="radio"]').forEach(radio => {
-      radio.addEventListener('change', function() {
-        document.querySelectorAll(`.radio-btn input[name="${this.name}"]`).forEach(r => {
-          r.parentElement.classList.remove('active');
+    document.querySelectorAll('.cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.cat-btn').forEach(b => {
+          b.classList.remove('tab-active');
+          b.classList.add('bg-slate-50', 'text-slate-600');
         });
-        if(this.checked) this.parentElement.classList.add('active');
+        btn.classList.add('tab-active');
+        btn.classList.remove('bg-slate-50', 'text-slate-600');
+        
+        selectedCategory = btn.dataset.cat;
+        document.getElementById('label-1').innerText = labels[selectedCategory][0];
+        document.getElementById('label-2').innerText = labels[selectedCategory][1];
+        document.getElementById('label-3').innerText = labels[selectedCategory][2];
       });
     });
 
-    // RSVP 전송
-    async function submitRSVP(e) {
-      e.preventDefault();
-      const form = e.target;
-      const btn = document.getElementById('submitBtn');
-      const originalText = btn.innerText;
-      btn.innerText = '전송 중...';
-      btn.disabled = true;
+    // ───────── 파일 처리 ─────────
+    function readAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = () => reject(new Error(`${file.name}: 파일을 읽을 수 없습니다.`));
+        reader.readAsDataURL(file);
+      });
+    }
 
+    // 사진을 브라우저에서 축소·JPEG 변환 → 휴대폰 사진(3~8MB)도 수백 KB로
+    function compressImage(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, IMAGE_MAX_SIDE / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff'; // 투명 PNG가 검게 변하지 않도록
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          const dataUrl = canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
+          resolve({ mimeType: 'image/jpeg', data: dataUrl.split(',')[1], previewUrl: dataUrl, name: file.name });
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error(`${file.name}: 이 브라우저에서 열 수 없는 이미지 형식입니다 (HEIC 등은 JPG로 변환 후 첨부).`));
+        };
+        img.src = url;
+      });
+    }
+
+    async function prepareFile(file) {
+      if (file.type.startsWith('image/')) return compressImage(file);
+      if (file.type === 'application/pdf') {
+        if (file.size > MAX_PDF_BYTES) {
+          throw new Error(`${file.name}: PDF는 2.5MB 이하만 첨부할 수 있습니다 (현재 ${(file.size / 1048576).toFixed(1)}MB).`);
+        }
+        return { mimeType: 'application/pdf', data: await readAsBase64(file), name: file.name };
+      }
+      throw new Error(`${file.name}: 지원하지 않는 파일 형식입니다.`);
+    }
+
+    async function processFiles(files) {
+      const preview = document.getElementById('image-preview');
+      preview.innerHTML = '<span class="text-xs text-slate-500">⏳ 파일 변환 중...</span>';
+
+      // 모든 파일 변환을 기다리고, 선택한 순서를 그대로 유지
+      const results = await Promise.allSettled(files.map(prepareFile));
+      const accepted = [];
+      const errors = [];
+      let total = 0;
+
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') { errors.push(r.reason.message); return; }
+        if (total + r.value.data.length > MAX_TOTAL_BASE64) {
+          errors.push(`${files[i].name}: 전체 첨부 용량 한도를 넘어 제외했습니다.`);
+          return;
+        }
+        total += r.value.data.length;
+        accepted.push(r.value);
+      });
+
+      attachedFiles = accepted.map(({ mimeType, data }) => ({ mimeType, data }));
+
+      preview.innerHTML = '';
+      accepted.forEach(f => {
+        if (f.previewUrl) {
+          const img = document.createElement('img');
+          img.src = f.previewUrl;
+          img.className = 'w-16 h-16 object-cover rounded border border-slate-300';
+          preview.appendChild(img);
+        } else {
+          const badge = document.createElement('div');
+          badge.className = 'px-3 py-2 bg-slate-100 border border-slate-300 rounded text-xs font-semibold text-slate-700 flex items-center gap-1';
+          badge.textContent = `📄 ${f.name.length > 18 ? f.name.slice(0, 18) + '...' : f.name}`;
+          preview.appendChild(badge);
+        }
+      });
+
+      if (errors.length) alert('일부 파일을 첨부하지 못했습니다:\n\n' + errors.join('\n'));
+    }
+
+    document.getElementById('image-upload').addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length > MAX_FILES) alert(`최대 ${MAX_FILES}개까지 첨부됩니다. 앞의 ${MAX_FILES}개만 사용합니다.`);
+      filesLoading = processFiles(files.slice(0, MAX_FILES));
+    });
+
+    // ───────── 서버 호출 공통 함수 ─────────
+    // Vercel이 413/504 등을 HTML로 돌려줘도 "Unexpected token" 대신 원인을 알려줌
+    function callApi(payload) {
+      return fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    async function readJSON(res) {
+      const raw = await res.text();
+      let data;
       try {
-        await fetch(form.action, { method: 'POST', mode: 'no-cors', body: new FormData(form) });
-        alert("참석 의사가 성공적으로 전달되었습니다. 감사합니다!");
-        closeModal('rsvpFormModal');
-        form.reset();
-        document.querySelectorAll('.radio-btn').forEach(lbl => lbl.classList.remove('active'));
-        form.querySelector('input[name="bus"][value="탑승함"]').parentElement.classList.add('active');
-      } catch(err) {
-        alert("오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-      } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
+        data = JSON.parse(raw);
+      } catch {
+        if (res.status === 413) throw new Error('첨부 파일 용량이 너무 큽니다. 사진 수를 줄이거나 PDF 용량을 줄여주세요.');
+        if (res.status === 504) throw new Error('서버 처리 시간을 넘었습니다. 잠시 후 다시 시도해 주세요.');
+        throw new Error(`서버 응답 오류 (HTTP ${res.status})`);
+      }
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    async function postJSON(payload) {
+      return readJSON(await callApi(payload));
+    }
+
+    // 원고 생성: 서버가 글을 쓰는 대로 조각조각 받아서 onText로 넘김
+    async function postStream(payload, onText) {
+      const res = await callApi(payload);
+      const type = res.headers.get('content-type') || '';
+      // 응답 시작 전에 실패한 경우는 서버가 JSON 에러를 보냄
+      if (!res.ok || type.includes('application/json')) {
+        await readJSON(res);
+        throw new Error(`서버 응답 오류 (HTTP ${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        onText(decoder.decode(value, { stream: true }));
+      }
+      onText(decoder.decode());
+    }
+
+    // ───────── 다룰 아이템 목록 (회사 취급 아이템 카탈로그) ─────────
+    let autoItemId = '';   // 자동 추천이 고른 아이템 (원고 생성 때 이어서 사용)
+    const itemSelect = document.getElementById('item-select');
+    const itemNote = document.getElementById('item-note');
+
+    function showItemNote(text) {
+      itemNote.textContent = text;
+      itemNote.classList.toggle('hidden', !text);
+    }
+
+    async function loadItems() {
+      try {
+        const res = await fetch('/api/generate');
+        const { items } = await res.json();
+        const groups = {};
+        items.forEach((it) => (groups[it.group] ||= []).push(it));
+        Object.entries(groups).forEach(([group, list]) => {
+          const og = document.createElement('optgroup');
+          og.label = group;
+          list.forEach((it) => {
+            const opt = document.createElement('option');
+            opt.value = it.id;
+            opt.textContent = it.name + (it.covered ? '  (블로그에서 다룬 적 있음)' : '');
+            og.appendChild(opt);
+          });
+          itemSelect.appendChild(og);
+        });
+      } catch {
+        showItemNote('아이템 목록을 불러오지 못했습니다. 자동 선택으로 진행됩니다.');
       }
     }
+    loadItems();
+
+    itemSelect.addEventListener('change', () => {
+      autoItemId = '';
+      showItemNote('');
+    });
+
+    const currentItemId = () => itemSelect.value || autoItemId;
+
+    // ───────── 🪄 AI 자동 추천 / 빈칸 채우기 ─────────
+    document.getElementById('autofill-btn').addEventListener('click', async () => {
+      const autoBtn = document.getElementById('autofill-btn');
+      const originalText = autoBtn.innerHTML;
+      autoBtn.disabled = true;
+      autoBtn.innerHTML = '<span>⏳ AI가 주제 기획 중...</span>';
+
+      try {
+        if (filesLoading) await filesLoading; // 파일 변환이 끝난 뒤 전송
+        const data = await postJSON({
+          mode: 'recommend',
+          category: selectedCategory,
+          itemId: itemSelect.value,
+          input1: document.getElementById('input-1').value,
+          rawData: document.getElementById('raw-data').value,
+          images: attachedFiles
+        });
+
+        if (data.recommendation) {
+          document.getElementById('input-1').value = data.recommendation.input1 || '';
+          document.getElementById('input-2').value = data.recommendation.input2 || '';
+          document.getElementById('input-3').value = data.recommendation.input3 || '';
+        }
+        if (data.item) {
+          if (!itemSelect.value) autoItemId = data.item.id;
+          showItemNote(`🎯 중심 아이템: ${data.item.name}` + (data.item.covered ? ' (기존 글과 다른 각도로 기획)' : ' (블로그에서 아직 안 다룬 아이템)'));
+        } else {
+          autoItemId = '';
+          showItemNote('');
+        }
+      } catch (err) {
+        alert('자동 추천 중 오류가 발생했습니다: ' + err.message);
+      } finally {
+        autoBtn.disabled = false;
+        autoBtn.innerHTML = originalText;
+      }
+    });
+
+    // ───────── ✨ 블로그 원고 생성 ─────────
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('generate-btn');
+      const output = document.getElementById('output-area');
+
+      btn.disabled = true;
+      const started = Date.now();
+      let received = false;
+      const tick = () => {
+        const sec = Math.round((Date.now() - started) / 1000);
+        btn.innerHTML = `<span>⏳ ${received ? '원고 작성 중' : 'AI가 내용 구상 중'}... ${sec}초</span>`;
+      };
+      tick();
+      const ticker = setInterval(tick, 1000);
+      rawText = '';
+      output.textContent = '전문 기술 블로그 원고를 구상하고 있습니다... (글이 시작되면 여기에 바로 표시됩니다)';
+
+      try {
+        if (filesLoading) await filesLoading;
+        await postStream({
+          mode: 'generate',
+          category: selectedCategory,
+          itemId: currentItemId(),
+          input1: document.getElementById('input-1').value,
+          input2: document.getElementById('input-2').value,
+          input3: document.getElementById('input-3').value,
+          rawData: document.getElementById('raw-data').value,
+          images: attachedFiles
+        }, (text) => {
+          if (!text) return;
+          received = true;
+          const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 40;
+          rawText += text;
+          output.innerHTML = renderMarkup(rawText);
+          if (atBottom) output.scrollTop = output.scrollHeight; // 읽는 중이면 스크롤을 뺏지 않음
+        });
+        if (!received) output.textContent = '오류가 발생했습니다: 서버에서 받은 내용이 없습니다. 다시 시도해 주세요.';
+      } catch (err) {
+        if (received) {
+          rawText += '\n\n⚠️ 연결이 끊겼습니다: ' + err.message;
+          output.innerHTML = renderMarkup(rawText);
+        } else {
+          output.textContent = '오류가 발생했습니다: ' + err.message;
+        }
+      } finally {
+        clearInterval(ticker);
+        btn.disabled = false;
+        btn.innerHTML = '<span>✨ 블로그 원고 자동 생성하기</span>';
+      }
+    });
+
+    // ───────── 원고 표기 → 서식 변환 ─────────
+    // AI가 쓰는 표기: ## 소제목 / **굵게** / ==빨간 강조== / - 목록 / --- 구분선 / | 표 | / [📸 ...] 자리 표시
+    // 인라인 스타일로 만들어야 네이버 에디터에 붙여넣을 때 서식이 유지됨
+    let rawText = '';
+    const RED = '#e5001c';
+
+    function esc(s) {
+      return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    function inline(s) {
+      return esc(s)
+        .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+        .replace(/==(.+?)==/g, `<span style="color:${RED}">$1</span>`);
+    }
+
+    function renderMarkup(raw) {
+      const out = [];
+      let list = null;
+      let table = null;
+      let lastBlank = false;
+      const flushList = () => {
+        if (!list) return;
+        out.push(`<ul style="margin:4px 0 4px 20px;padding:0;list-style:disc">${list.join('')}</ul>`);
+        list = null;
+      };
+      const flushTable = () => {
+        if (!table) return;
+        const rows = table.map((cells, i) => '<tr>' + cells.map((c) => i === 0
+          ? `<th style="border:1px solid #d0d5dd;background:#f5f5f5;padding:6px 10px;font-weight:600">${inline(c)}</th>`
+          : `<td style="border:1px solid #d0d5dd;padding:6px 10px">${inline(c)}</td>`).join('') + '</tr>');
+        out.push(`<table style="border-collapse:collapse;margin:8px 0;font-size:13px">${rows.join('')}</table>`);
+        table = null;
+      };
+
+      for (const line of raw.replace(/\r/g, '').split('\n')) {
+        const t = line.trim();
+
+        if (/^\|.*\|$/.test(t)) {
+          flushList();
+          const cells = t.slice(1, -1).split('|').map((c) => c.trim());
+          if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue; // | --- | 구분줄은 건너뜀
+          (table ||= []).push(cells);
+          lastBlank = false;
+          continue;
+        }
+        flushTable();
+
+        if (/^[-•]\s+/.test(t)) {
+          (list ||= []).push(`<li>${inline(t.replace(/^[-•]\s+/, ''))}</li>`);
+          lastBlank = false;
+          continue;
+        }
+        flushList();
+
+        if (t === '') {
+          if (!lastBlank) out.push('<p><br></p>');
+          lastBlank = true;
+          continue;
+        }
+        lastBlank = false;
+
+        if (/^-{3,}$/.test(t)) {
+          out.push('<hr style="border:0;border-top:1px solid #d0d5dd;margin:16px 0">');
+        } else if (t.startsWith('## ')) {
+          out.push(`<p style="margin:12px 0 6px"><span style="font-size:18px"><b>${inline(t.slice(3))}</b></span></p>`);
+        } else if (/^\[(📸|🎬|🔗)/.test(t)) {
+          out.push(`<p style="margin:6px 0;padding:6px 10px;background:#eef2ff;color:#3730a3;border-radius:6px;font-size:13px">${inline(t)}</p>`);
+        } else {
+          out.push(`<p style="margin:0">${inline(t)}</p>`);
+        }
+      }
+      flushList();
+      flushTable();
+      return out.join('');
+    }
+
+    function toPlain(raw) {
+      return raw
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/==(.+?)==/g, '$1')
+        .replace(/^## /gm, '');
+    }
+
+    // ───────── 복사 버튼: 서식(HTML)과 일반 텍스트를 함께 복사 ─────────
+    document.getElementById('copy-btn').addEventListener('click', async () => {
+      const output = document.getElementById('output-area');
+      const plain = rawText ? toPlain(rawText) : output.innerText;
+      try {
+        if (rawText && window.ClipboardItem && navigator.clipboard.write) {
+          await navigator.clipboard.write([new ClipboardItem({
+            'text/html': new Blob([output.innerHTML], { type: 'text/html' }),
+            'text/plain': new Blob([plain], { type: 'text/plain' })
+          })]);
+          alert('서식 포함으로 복사했습니다! 네이버 에디터에 붙여넣으세요.');
+        } else {
+          await navigator.clipboard.writeText(plain);
+          alert('블로그 원고가 클립보드에 복사되었습니다!');
+        }
+      } catch {
+        try {
+          await navigator.clipboard.writeText(plain);
+          alert('서식 없이 텍스트로만 복사했습니다.');
+        } catch {
+          alert('복사에 실패했습니다. 원고 영역을 드래그해서 직접 복사해 주세요.');
+        }
+      }
+    });
   </script>
 </body>
 </html>
