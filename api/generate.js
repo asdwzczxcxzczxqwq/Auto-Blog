@@ -1,4 +1,17 @@
 // api/generate.js
+import {
+  PUBLISHED_TITLES,
+  COMPANY_PROFILE,
+  ITEM_CATALOG,
+  CATALOG_TEXT,
+  APPLICATION_CASES,
+  formatItem,
+  MARKUP_RULES,
+  COMMON_RULES,
+  CATEGORY_STYLES,
+  CATEGORY_EXAMPLES,
+} from './_blog-style.js';
+
 export const config = {
   // Fluid compute가 켜진 프로젝트는 Hobby 플랜도 최대 300초까지 허용됨.
   // 배포가 실패하면 Vercel 프로젝트 Settings → Functions에서 Fluid Compute가 켜져 있는지 확인.
@@ -161,13 +174,41 @@ function buildFileParts(images) {
 const categoryNames = {
   case: '납품 및 현장 구축 성공 사례 (1: 타겟 업종/적용 공정, 2: 현장 이슈/기존 한계점, 3: 적용 솔루션 및 개선 효과)',
   tech: '핵심 장비 및 기술 솔루션 상세 소개 (1: 소개할 장비/솔루션명, 2: 핵심 기술 원리 및 스펙, 3: 현장 도입 시 기대 효과)',
-  trouble: '제조 공정 트러블슈팅 및 엔지니어링 노하우 (1: 발생한 공정 문제/불량 현상, 2: 원인 분석, 3: 해결 메커니즘 및 재발 방지책)',
+  trouble: '장비 운영 가이드 및 트러블슈팅 노하우 (1: 발생한 공정 문제/불량 현상, 2: 원인 분석, 3: 해결 메커니즘 및 재발 방지책)',
+  product: '제품·소모품 모델별 특징 정리 (1: 정리할 제품군/모델 번호, 2: 구분 기준(타입·용제·용도 등), 3: 추천 대상/문의 유도 포인트)',
 };
+
+const titleList = PUBLISHED_TITLES.map((t) => `- ${t}`).join('\n');
+
+// 기존 글 제목에 키워드가 들어 있으면 "이미 다룬 아이템"
+const titlesJoined = PUBLISHED_TITLES.join(' ').toLowerCase();
+const isCovered = (item) => item.keywords.some((k) => titlesJoined.includes(k.toLowerCase()));
+
+// 아이템 선택: 사용자가 고른 것이 있으면 그것, 없으면 아직 안 다룬 아이템을 4배 더 잘 뽑히게 무작위 선택
+function pickItem(itemId) {
+  const chosen = ITEM_CATALOG.find((i) => i.id === itemId);
+  if (chosen) return chosen;
+  const weighted = ITEM_CATALOG.map((i) => ({ i, w: isCovered(i) ? 1 : 4 }));
+  let r = Math.random() * weighted.reduce((s, x) => s + x.w, 0);
+  for (const { i, w } of weighted) {
+    r -= w;
+    if (r <= 0) return i;
+  }
+  return ITEM_CATALOG[0];
+}
+
+const randomOf = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ─────────────────────────────────────────────────────────────
 // 핸들러
 // ─────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
+  // 화면의 "다룰 아이템" 목록용
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      items: ITEM_CATALOG.map((i) => ({ id: i.id, group: i.group, name: i.name, covered: isCovered(i) })),
+    });
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -179,26 +220,45 @@ export default async function handler(req, res) {
 
   const deadline = Date.now() + TOTAL_BUDGET_MS;
   const startedAt = Date.now();
-  const { mode, category, input1, input2, input3, rawData, images } = req.body || {};
+  const { mode, category, input1, input2, input3, rawData, images, itemId } = req.body || {};
   const fileParts = buildFileParts(images);
-  const categoryLabel = categoryNames[category] || categoryNames.case;
+  const cat = categoryNames[category] ? category : 'case';
+  const categoryLabel = categoryNames[cat];
 
   // ==========================================================
   // 모드 1: [🪄 AI 자동 추천 / 빈칸 채우기]  (짧은 응답 → 일반 호출)
   // ==========================================================
   if (mode === 'recommend') {
+    const hasHint = Boolean((input1 || '').trim() || (rawData || '').trim() || fileParts.length);
+    // 힌트가 없을 때만 아이템을 골라 주제의 중심으로 삼음 (사용자가 아이템을 지정했으면 항상 그 아이템)
+    const item = itemId || !hasHint ? pickItem(itemId) : null;
+    const industryHint = item ? randomOf(item.uses.split(',').map((s) => s.trim()).filter(Boolean)) : '';
+
     const recommendPrompt = `
-당신은 산업 자동화 설비 및 제조 솔루션 전문 기업의 수석 기술 마케터입니다.
-우리 회사의 핵심 주력 분야:
-1. 레이저 마킹 및 정밀 가공 설비 (UV/화이버/CO2 레이저, 미세 홀가공, 마킹)
-2. 머신비전 검사 및 정밀 얼라인(Align) 비전 시스템 (위치 보정, 외관/치수 검사, OCR)
-3. 열전사 프린터(TTO) 및 포장/라벨 마킹 자동화
-4. PLC / PC 통합 제어 및 스마트팩토리 라인 모니터링 시스템
+당신은 산업용 마킹·비전 검사 솔루션 기업 브이큐브(V-CUBE)의 네이버 블로그를 운영하는 기술 마케터입니다.
+
+[회사 개요]
+${COMPANY_PROFILE}
+[실제 적용 사례]
+${APPLICATION_CASES}
+[이미 블로그에 올린 글]
+${titleList}
 
 현재 선택된 카테고리: [${categoryLabel}]
 사용자 힌트/메모: ${input1 || ''} ${rawData || ''}
-
-첨부 자료나 힌트가 있다면 그 내용을 요약해 3칸을 채우고, 아무 자료도 없다면 우리 회사 주력 분야 중 제조 엔지니어가 혹할 만한 실전 블로그 주제를 하나 기획해 3칸을 채워주세요. (고객사 실명은 익명화할 것)
+${item ? `
+[이번 글의 중심 아이템 — 반드시 이 아이템을 주인공으로]
+${formatItem(item)}
+${isCovered(item) ? '※ 이 아이템은 블로그에서 이미 다룬 적이 있으므로, 기존 글과 다른 업종·다른 문제·후속편 각도로 기획할 것.' : '※ 아직 블로그에서 다루지 않은 아이템입니다.'}
+[먼저 검토할 적용 업종] ${industryHint} (더 자연스러운 업종이 있으면 '적용' 목록 안에서 바꿔도 됨)
+` : ''}
+${hasHint ? '첨부 자료나 힌트의 내용을 중심으로 3칸을 채우세요. 위 아이템과 관련이 있으면 아이템의 사실을 활용하세요.' : ''}
+주제 기획 기준:
+- "아이템 × 업종 × 그 업종 현장이 실제로 겪는 문제" 조합으로 하나의 구체적인 주제를 만들 것.
+- 이미 올린 글과 같은 주제는 피하고, 다른 업종 적용·후속편·심화편 각도로 확장할 것.
+- 선택된 카테고리의 글 유형에 맞을 것 (예: 제품/소모품 정리면 모델·재질·소모품 비교, 운영 가이드면 증상과 점검 포인트).
+- 고객이 실제로 검색할 만한 키워드(모델명, 불량 현상, 업종+장비명)가 들어가게.
+- 아이템의 사양은 위 '사실'에 있는 것만 언급. 고객사 실명은 익명화.
 각 칸은 한 줄(40자 내외)로 작성하세요.
 `;
 
@@ -243,7 +303,10 @@ export default async function handler(req, res) {
       if (!parsed.input1 && !parsed.input2 && !parsed.input3) {
         return res.status(502).json({ error: 'AI가 추천 결과를 올바른 형식으로 돌려주지 않았습니다. 다시 눌러주세요.' });
       }
-      return res.status(200).json({ recommendation: parsed });
+      return res.status(200).json({
+        recommendation: parsed,
+        item: item ? { id: item.id, name: item.name, covered: isCovered(item) } : null,
+      });
     } catch (err) {
       const message = err.name === 'AbortError' ? 'AI 응답이 너무 오래 걸려 중단되었습니다. 다시 눌러주세요.' : err.message;
       console.error(JSON.stringify({ mode: 'recommend', ms: Date.now() - startedAt, error: message }));
@@ -254,28 +317,43 @@ export default async function handler(req, res) {
   // ==========================================================
   // 모드 2: [✨ 블로그 원고 자동 생성하기]  (스트리밍: 글이 써지는 대로 화면에 전달)
   // ==========================================================
+  const focusItem = ITEM_CATALOG.find((i) => i.id === itemId) || null;
+
+  // 블로그 문체·견본·기존 글 목록·아이템 카탈로그는 api/_blog-style.js에서 관리
   const SYSTEM_INSTRUCTION = `
-당신은 산업 자동화 설비 및 제조 솔루션 전문 기업의 수석 기술 마케터입니다.
-우리 회사의 핵심 역량은 다음과 같습니다:
-- 주력 분야: 산업 자동화 시스템, 레이저 마킹/가공 설비, 머신비전 검사 및 정밀 얼라인 시스템, 열전사 프린팅(TTO), PLC/PC 통합 제어 및 라인 모니터링 시스템
-- 타겟 독자: 제조 기업(반도체, 이차전지, 자동차 부품, 전자/사출, 식품/제약 등)의 생산기술팀, 설비엔지니어, 구매 및 자동화 담당자
+당신은 산업용 마킹·비전 검사 솔루션 기업 브이큐브(V-CUBE)의 네이버 블로그 글을 대신 쓰는 담당자입니다.
+아래 견본 글은 실제로 이 블로그에 올라간 글입니다. 견본의 말투, 문장 길이, 줄바꿈, 소제목 방식, 강조 방식,
+사진·영상 배치를 최대한 그대로 따라 쓰세요. 단, 견본의 문장을 그대로 베끼지 말고 새 주제에 맞게 새로 쓰세요.
 
-[필수 작성 및 보안 규칙]
-1. 보안 마스킹: 입력된 자료에 특정 고객사 실명이나 단가/견적 금액이 있으면 '국내 주요 반도체 부품 제조사', 'A사' 등으로 익명화하고 금액은 제외하세요.
-2. 전문성과 가독성: 기술적 인과관계(원인-해결-결과)를 명확히 서술하되, 네이버 블로그에 바로 붙여넣기 좋게 마크다운 별표(**) 대신 깔끔한 기호(■, ▶, ✔)와 줄바꿈을 활용하세요.
-3. 사진 가이드: 문맥에 맞춰 사진이 들어갈 위치에 [📸 사진 삽입: ~한 장면] 형태로 가이드를 넣어주세요.
-4. 분량: 본문은 공백 포함 2,500~3,500자 내외로 작성하세요.
+[회사 개요]
+${COMPANY_PROFILE}
+[취급 아이템 카탈로그 — 제품 사양과 강점은 여기 적힌 사실만 사용]
+${CATALOG_TEXT}
 
-[출력 포맷]
-📌 추천 블로그 제목 (3가지)
-----------------------------------------
-1. 도입부: 현장 페인포인트(Pain-Point) 공감 및 문제 제기
-2. 본문 1: 기존 공정의 한계 및 원인 분석
-3. 본문 2: 맞춤형 기술 솔루션 및 시스템 구성 (비전/레이저/제어 특징 상세화)
-4. 본문 3: 도입 후 개선 효과 (정밀도, 수율, 택트타임, 자동화)
-5. 결론: 기술 상담 및 샘플 테스트/맞춤 제작 문의 유도
-----------------------------------------
-🏷️ 추천 해시태그 (10개 내외)
+[실제 적용 사례]
+${APPLICATION_CASES}
+[타겟 독자]
+제조·물류 현장의 생산기술팀, 설비 엔지니어, 구매·자동화 담당자, 그리고 장비 모델명이나 불량 현상을 검색해 들어오는 기존 장비 사용자.
+
+${COMMON_RULES}
+${CATEGORY_STYLES[cat]}
+${MARKUP_RULES}
+[이미 올린 글 — 관련 글 링크에만 사용, 같은 내용 반복 금지]
+${titleList}
+
+[출력 형식]
+📌 추천 제목
+1. (제목)
+2. (제목)
+3. (제목)
+---
+(본문: 위 글 유형과 표기 규칙대로)
+---
+🏷️ 추천 해시태그
+(#태그 10개 내외를 한 줄에)
+
+[견본 글]
+${CATEGORY_EXAMPLES[cat]}
 `;
 
   const userPrompt = `
@@ -284,6 +362,7 @@ export default async function handler(req, res) {
 [핵심 입력 2]: ${input2 || '(AI가 문맥에 맞게 자동 설정)'}
 [핵심 입력 3]: ${input3 || '(AI가 문맥에 맞게 자동 설정)'}
 [현장 자료 / 추가 사양 텍스트]: ${rawData || '별도 텍스트 자료 없음'}
+${focusItem ? `[중심 아이템]: ${focusItem.name} — 카탈로그의 이 아이템 사실을 본문의 핵심 근거로 사용하고, 함께 쓰면 좋은 다른 취급 아이템(예: 마킹기 + 바코드 검증 + LMS)이 있으면 자연스럽게 엮을 것.` : '[중심 아이템]: 입력 내용에 맞는 취급 아이템을 카탈로그에서 골라 근거로 사용할 것.'}
 
 첨부된 파일과 위 정보를 바탕으로 전문 기술 블로그 포스팅 완성본을 작성해 주세요.
 `;
