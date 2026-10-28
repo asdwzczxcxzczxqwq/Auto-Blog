@@ -10,6 +10,9 @@ import {
   COMMON_RULES,
   CATEGORY_STYLES,
   CATEGORY_EXAMPLES,
+  GEO_RULES,
+  selectTerms,
+  formatTerms,
 } from './_blog-style.js';
 
 export const config = {
@@ -199,6 +202,12 @@ function pickItem(itemId) {
 
 const randomOf = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+// "2026년 10월" 형태의 기준일 (한국 시간)
+function baseMonthKST() {
+  const kst = new Date(Date.now() + 9 * 3600 * 1000);
+  return `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월`;
+}
+
 // ─────────────────────────────────────────────────────────────
 // 핸들러
 // ─────────────────────────────────────────────────────────────
@@ -221,6 +230,7 @@ export default async function handler(req, res) {
   const deadline = Date.now() + TOTAL_BUDGET_MS;
   const startedAt = Date.now();
   const { mode, category, input1, input2, input3, rawData, images, itemId } = req.body || {};
+  const geo = req.body?.geo !== false; // AI 검색 인용 최적화 (기본 켜짐)
   const fileParts = buildFileParts(images);
   const cat = categoryNames[category] ? category : 'case';
   const categoryLabel = categoryNames[cat];
@@ -258,7 +268,7 @@ ${hasHint ? '첨부 자료나 힌트의 내용을 중심으로 3칸을 채우세
 - 이미 올린 글과 같은 주제는 피하고, 다른 업종 적용·후속편·심화편 각도로 확장할 것.
 - 선택된 카테고리의 글 유형에 맞을 것 (예: 제품/소모품 정리면 모델·재질·소모품 비교, 운영 가이드면 증상과 점검 포인트).
 - 고객이 실제로 검색할 만한 키워드(모델명, 불량 현상, 업종+장비명)가 들어가게.
-- 아이템의 사양은 위 '사실'에 있는 것만 언급. 고객사 실명은 익명화.
+${geo ? '- 사람들이 검색창이나 AI에게 실제로 묻는 질문(장비 선택 기준, 방식 비교, 불량 원인, 규격 대응)에 답이 되는 주제를 우선할 것.\n' : ''}- 아이템의 사양은 위 '사실'에 있는 것만 언급. 고객사 실명은 익명화.
 각 칸은 한 줄(40자 내외)로 작성하세요.
 `;
 
@@ -319,6 +329,29 @@ ${hasHint ? '첨부 자료나 힌트의 내용을 중심으로 3칸을 채우세
   // ==========================================================
   const focusItem = ITEM_CATALOG.find((i) => i.id === itemId) || null;
 
+  // AI 인용 최적화: 글감과 관련된 용어만 사전에서 골라 넣음
+  const termSource = [focusItem?.name, focusItem?.facts, focusItem?.uses, input1, input2, input3, rawData].filter(Boolean).join(' ');
+  const terms = geo ? selectTerms(termSource, focusItem?.group) : [];
+  const geoBlock = geo
+    ? `${GEO_RULES.replace('{기준일}', baseMonthKST())}
+[용어 사전 — 용어 박스와 본문 설명은 이 정의를 기준으로]
+${formatTerms(terms)}
+`
+    : '';
+  const bodyFormat = geo
+    ? `[📸 대표 사진]
+## 📌 한눈에 보기
+- (요약 1) / - (요약 2) / - (요약 3)
+(본문: 글 유형과 표기 규칙대로, 용어 박스 3~5개와 질문형 소제목 2~3개 포함)
+## ❓ 자주 묻는 질문
+Q. (질문)
+A. (답)
+… 3~5쌍
+(문의 유도)
+※ 이 글은 ${baseMonthKST()} 기준으로 작성되었습니다.
+[📸 사진: 명함 배너 | 캡션: 견적 문의 · 무료 샘플 테스트]`
+    : '(본문: 위 글 유형과 표기 규칙대로)';
+
   // 블로그 문체·견본·기존 글 목록·아이템 카탈로그는 api/_blog-style.js에서 관리
   const SYSTEM_INSTRUCTION = `
 당신은 산업용 마킹·비전 검사 솔루션 기업 브이큐브(V-CUBE)의 네이버 블로그 글을 대신 쓰는 담당자입니다.
@@ -338,6 +371,7 @@ ${APPLICATION_CASES}
 ${COMMON_RULES}
 ${CATEGORY_STYLES[cat]}
 ${MARKUP_RULES}
+${geoBlock}
 [이미 올린 글 — 관련 글 링크에만 사용, 같은 내용 반복 금지]
 ${titleList}
 
@@ -347,7 +381,7 @@ ${titleList}
 2. (제목)
 3. (제목)
 ---
-(본문: 위 글 유형과 표기 규칙대로)
+${bodyFormat}
 ---
 🏷️ 추천 해시태그
 (#태그 10개 내외를 한 줄에)
@@ -370,8 +404,8 @@ ${focusItem ? `[중심 아이템]: ${focusItem.name} — 카탈로그의 이 아
   const baseOpts = {
     systemInstruction: SYSTEM_INSTRUCTION,
     temperature: 0.7,
-    // 사고(thinking) 토큰도 이 한도에 포함되므로 넉넉하게
-    maxOutputTokens: 8192,
+    // 사고(thinking) 토큰도 이 한도에 포함되므로 넉넉하게 (요약·용어·FAQ가 추가되어 상향)
+    maxOutputTokens: 12288,
   };
   const baseContents = [{ role: 'user', parts: [{ text: userPrompt }, ...fileParts] }];
 
@@ -464,6 +498,8 @@ ${focusItem ? `[중심 아이템]: ${focusItem.name} — 카탈로그의 이 아
     console.log(JSON.stringify({
       mode: 'generate',
       models: modelsUsed,
+      geo,
+      terms: terms.map((t) => t.id),
       ms: Date.now() - startedAt,
       chars: total.length,
       finishReason,
